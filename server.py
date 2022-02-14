@@ -201,5 +201,17 @@ def skip_day():
     manager.next_day(delete=False)
     return send_state()
 
+@app.route('/test', methods=['POST'])
+def process_test():
+    print(manager.current_step)
+    manager.process({'changes': [], 'LIFE': ''})
+    print(manager.current_step)
+    manager.process({'changes': [], 'LIFE': ''})
+    print(manager.current_step)
+    manager.process({'changes': [], 'LIFE': ''})
+
+    return send_state()
+
+
 if __name__ == '__main__':
     app.run(debug=args.debug, port=args.port, host=args.host, threaded=True)

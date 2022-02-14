@@ -15,8 +15,7 @@ def adapt_point(point):
     Params:
         points (:obj:`tracktotrip.Point`)
     """
-    point = ppygis3.Point(point.lon, point.lat, 0, srid=4326)
-    return AsIs(adapt(point.write_ewkb()).getquoted())
+    return AsIs("'SRID=%s;POINT(%s %s 0)'" % (4326, point.lon, point.lat))
 
 def to_point(gis_point, time=None):
     """ Creates from raw ppygis representation
@@ -54,8 +53,14 @@ def adapt_segment(segment):
     Args:
         segment (:obj:`tracktotrip.Segment`)
     """
-    points = [ppygis3.Point(p.lon, p.lat, 0, srid=4326) for p in segment.points]
-    return AsIs(adapt(ppygis3.LineString(points).write_ewkb()).getquoted())
+    points = ""
+
+    for p in segment.points:
+        points += ("%s %s 0, " % (p.lon, p.lat))
+
+    points = points.removesuffix(", ")
+
+    return  AsIs("'LINESTRING(%s)'" % (points))
 
 
 register_adapter(Point, adapt_point)
@@ -96,14 +101,15 @@ def load_from_segments_annotated(cur, track, life_content, max_distance, min_sam
     Args:
         cur (:obj:`psycopg2.cursor`)
         track (:obj:`tracktotrip.Track`)
-        content_content (str): LIFE formatted string
+        life_content (str): LIFE formatted string
         max_distance (float): Max location distance. See
             `tracktotrip.location.update_location_centroid`
         min_samples (float): Minimum samples requires for location.  See
             `tracktotrip.location.update_location_centroid`
     """
+    
     life = Life()
-    life.from_string(life_content.encode('utf8').split('\n'))
+    life.from_string(life_content.split('\n'))
 
     def in_loc(points, i):
         point = points[i]
@@ -150,7 +156,7 @@ def load_from_life(cur, content, max_distance, min_samples):
             `tracktotrip.location.update_location_centroid`
     """
     life = Life()
-    life.from_string(content.encode('utf8').split('\n'))
+    life.from_string(content.split('\n'))
 
     # Insert canonical places
     for place, (lat, lon) in list(life.locations.items()):
@@ -211,13 +217,15 @@ def dispose(conn, cur):
 def gis_bounds(bound):
     """ Converts bounds to its representation
     """
-    points = [
-        ppygis3.Point(bound[0], bound[1], 0, srid=4336),
-        ppygis3.Point(bound[0], bound[3], 0, srid=4336),
-        ppygis3.Point(bound[2], bound[1], 0, srid=4336),
-        ppygis3.Point(bound[2], bound[3], 0, srid=4336)
-    ]
-    return ppygis3.Polygon([ppygis3.LineString(points)]).write_ewkb()
+
+    points = ''
+    points += ("%s %s 0, " % (bound[0], bound[1]))
+    points += ("%s %s 0, " % (bound[0], bound[3]))
+    points += ("%s %s 0, " % (bound[2], bound[1]))
+    points += ("%s %s 0, " % (bound[2], bound[3]))
+    points += ("%s %s 0"   % (bound[0], bound[1]))
+
+    return AsIs("'POLYGON((%s))'" % (points))
 
 def insert_location(cur, label, point, max_distance, min_samples):
     """ Inserts a location into the database
@@ -232,7 +240,6 @@ def insert_location(cur, label, point, max_distance, min_samples):
             `tracktotrip.location.update_location_centroid`
     """
 
-    label = str(label, 'utf-8')
     print('Inserting location %s, %f, %f' % (label, point.lat, point.lon))
 
     cur.execute("""
@@ -268,7 +275,7 @@ def insert_location(cur, label, point, max_distance, min_samples):
         cur.execute("""
                 INSERT INTO locations (label, centroid, point_cluster)
                 VALUES (%s, %s, %s)
-                """, (label, point, Segment([point])))
+                """, (label, point, Segment([point, point])))
 
 def insert_transportation_mode(cur, tmode, trip_id, segment):
     """ Inserts transportation mode in the database

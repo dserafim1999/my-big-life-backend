@@ -46,7 +46,7 @@ def find_index_point(track, time):
 
 def apply_transportation_mode_to(track, life_content, transportation_modes):
     life = Life()
-    life.from_string(life_content.encode('utf8').split('\n'))
+    life.from_string(life_content.split('\n'))
 
     for segment in track.segments:
         segment.transportation_modes = []
