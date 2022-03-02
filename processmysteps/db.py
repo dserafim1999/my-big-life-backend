@@ -140,7 +140,7 @@ def load_from_segments_annotated(cur, track, life_content, max_distance, min_sam
                 insert_stay(cur, span.place, start, end)
 
     # Insert canonical places
-    for place, (lat, lon) in list(life.locations.items()):
+    for place, (lat, lon) in list(life.coordinates.items()):
         insert_location(cur, place, Point(lat, lon, None), max_distance, min_samples)
 
 
@@ -159,7 +159,7 @@ def load_from_life(cur, content, max_distance, min_samples):
     life.from_string(content.split('\n'))
 
     # Insert canonical places
-    for place, (lat, lon) in list(life.locations.items()):
+    for place, (lat, lon) in list(life.coordinates.items()):
         insert_location(cur, place, Point(lat, lon, None), max_distance, min_samples)
 
     # Insert stays

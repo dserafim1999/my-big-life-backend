@@ -134,6 +134,46 @@ class Life:
     # TODO: Add days programatically (not from file)
     # TODO: Output .life file (to_file method)
 
+    def from_string(self, content):
+        """Loads from a string"""
+        if type(content) is str:
+            content = content.replace('\r\n', '\n').split('\n')
+
+        curday=None
+        curdate=None
+        curtimezone = self.default_timezone
+        linecount = 0
+        for line in content:
+            linecount += 1
+            try:
+                line = line.strip().lower()
+                line = line.split(";")[0]
+                if len(line)==0:
+                    pass
+                elif line[:2]=="--":
+                    if curday:
+                        self.days.append(curday)
+                    curdate = line[2:].strip()
+                    curday = Day(curdate)
+                elif line[:3] == "utc":
+                    curtimezone = line
+                elif line[:4] == "@utc":
+                    curtimezone = [curtimezone,line[1:]]
+                elif line[0]=="@":
+                    self.parseMeta(line[1:],curdate)
+                else:
+                    splited = line.split(":")
+                    dates = splited[0]
+                    descr = ":".join(splited[1:])
+                    descr=descr.lower()
+                    curday.add_span(Span(curdate,dates[:4],dates[-4:],descr.strip(),curtimezone))
+                    if type(curtimezone) == list:
+                        curtimezone = curtimezone[1]
+            except:
+                raise TypeError("Failed to parse line %d: '%s'" % (linecount, line))
+        if curday:
+            self.days.append(curday)
+
     def from_file(self,filename, recursive=False):
         """Populates instance from a .life file"""
         if not recursive:

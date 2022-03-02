@@ -689,7 +689,7 @@ class ProcessingManager(object):
             db.load_from_segments_annotated(
                 cur,
                 tt.Track('', []),
-                content,
+                str(content, 'utf-8'),
                 self.config['location']['max_distance'],
                 self.config['location']['min_samples']
             )
