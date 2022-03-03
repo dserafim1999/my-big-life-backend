@@ -542,7 +542,8 @@ class ProcessingManager(object):
                 self.current_track(),
                 life,
                 self.config['location']['max_distance'],
-                self.config['location']['min_samples']
+                self.config['location']['min_samples'],
+                False
             )
 
             def insert_can_trip(can_trip, mother_trip_id):

@@ -95,7 +95,7 @@ def life_time(point):
     time = point.time.time()
     return "%02d%02d" % (time.hour, time.minute)
 
-def load_from_segments_annotated(cur, track, life_content, max_distance, min_samples):
+def load_from_segments_annotated(cur, track, life_content, max_distance, min_samples, add_segment = True):
     """ Uses a LIFE formated string to populate the database
 
     Args:
@@ -123,11 +123,12 @@ def load_from_segments_annotated(cur, track, life_content, max_distance, min_sam
                 for loc in location:
                     insert_location(cur, loc, point, max_distance, min_samples)
 
-    for segment in track.segments:
-        in_loc(segment.points, 0)
-        in_loc(segment.points, -1)
-        # find trip
-        insert_segment(cur, segment, max_distance, min_samples)
+    if add_segment:
+        for segment in track.segments:
+            in_loc(segment.points, 0)
+            in_loc(segment.points, -1)
+            # find trip
+            insert_segment(cur, segment, max_distance, min_samples)
 
     # Insert stays
     for day in life.days:
