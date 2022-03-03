@@ -516,3 +516,16 @@ def get_canonical_locations(cur):
     cur.execute("SELECT label, point_cluster FROM locations")
     locations = cur.fetchall()
     return [{'label': t[0], 'points': to_segment(t[1])} for t in locations]
+
+def get_all_trips(cur):
+    """ Gets trips in db
+
+    Args:
+        cur (:obj:`psycopg2.cursor`)
+    Returns:
+        :obj:`list` of :obj:`dict`:
+            [{ 'id': 1, 'points': <tracktotrip.Segment> }, ...]
+    """
+    cur.execute("SELECT trip_id, points FROM trips")
+    trips = cur.fetchall()
+    return [{'id': t[0], 'points': to_segment(t[1])} for t in trips]

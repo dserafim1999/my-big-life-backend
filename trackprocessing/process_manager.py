@@ -13,10 +13,10 @@ from tracktotrip.location import infer_location
 from tracktotrip.classifier import Classifier
 from tracktotrip.learn_trip import learn_trip, complete_trip
 from tracktotrip.transportation_mode import learn_transportation_mode, classify
-from processmysteps import db
+from main import db
 from life.life import Life
 
-from processmysteps.default_config import CONFIG
+from trackprocessing.default_config import CONFIG
 
 def inside(to_find, modes):
     for elm in to_find:
@@ -203,7 +203,7 @@ class ProcessingManager(object):
 
         clf_path = self.config['transportation']['classifier_path']
         if clf_path:
-            self.clf = Classifier.load_from_file(open(expanduser(clf_path), 'rb'))
+            self.clf = Classifier.load_from_file(open(expanduser(clf_path), 'r'))
         else:
             self.clf = Classifier()
 
