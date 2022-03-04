@@ -527,6 +527,9 @@ def get_all_trips(cur):
         :obj:`list` of :obj:`dict`:
             [{ 'id': 1, 'points': <tracktotrip.Segment> }, ...]
     """
-    cur.execute("SELECT trip_id, points FROM trips")
+    cur.execute("SELECT trip_id, points, timestamps FROM trips")
     trips = cur.fetchall()
-    return [{'id': t[0], 'points': to_segment(t[1])} for t in trips]
+    return [{'id': t[0], 'points': to_segment(t[1], t[2])} for t in trips]
+
+def execute_query(cur, query):
+    cur.execute(query)

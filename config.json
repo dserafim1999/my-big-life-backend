@@ -1,6 +1,6 @@
 {
-  "input_path": "C:\\Users\\dsera\\Documents\\GitHub\\my-big-life-backend\\tracks\\input",
-  "backup_path": "C:\\Users\\dsera\\Documents\\GitHub\\my-big-life-backend\\tracks\\backup",
+  "input_path": "C:\\Users\\dsera\\Documents\\GitHub\\my-big-life-backend\\tracks\\input\\",
+  "backup_path": "C:\\Users\\dsera\\Documents\\GitHub\\my-big-life-backend\\tracks\\backup\\",
   "output_path": "C:\\Users\\dsera\\Documents\\GitHub\\my-big-life-backend\\tracks\\dest\\",
   "life_path": "C:\\Users\\dsera\\Documents\\GitHub\\my-big-life-backend\\tracks\\life\\",
   "life_all": "C:\\Users\\dsera\\Documents\\GitHub\\my-big-life-backend\\tracks\\my.life",
