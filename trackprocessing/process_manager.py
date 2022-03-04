@@ -610,7 +610,12 @@ class ProcessingManager(object):
                 rename(from_path, to_path)
 
         self.next_day()
-        self.current_step = Step.preview
+
+        if (self.current_day == None):
+            self.current_step = Step.done
+        else:
+            self.current_step = Step.preview
+
         return self.current_track()
 
     def current_track(self):
