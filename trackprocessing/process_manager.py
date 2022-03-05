@@ -15,6 +15,7 @@ from tracktotrip.learn_trip import learn_trip, complete_trip
 from tracktotrip.transportation_mode import learn_transportation_mode, classify
 from main import db
 from life.life import Life
+from utils import update_dict
 
 from trackprocessing.default_config import CONFIG
 
@@ -127,22 +128,6 @@ def file_details(base_path, filepath):
         'start': date,
         'date': date.date().isoformat()
     }
-
-def update_dict(target, updater):
-    """ Updates a dictionary, keeping the same structure
-
-    Args:
-        target (:obj:`dict`): dictionary to update
-        updater (:obj:`dict`): dictionary with the new information
-    """
-    target_keys = list(target.keys())
-    for key in list(updater.keys()):
-        if key in target_keys:
-            if isinstance(target[key], dict):
-                update_dict(target[key], updater[key])
-            else:
-                target[key] = updater[key]
-
 
 class Step(object):
     """ Step enumeration

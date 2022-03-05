@@ -51,8 +51,9 @@ def set_configuration():
         :obj:`flask.response`
     """
     payload = request.get_json(force=True)
+    manager.update_config(payload)
     processing_manager.update_config(payload)
-    return set_headers(jsonify(processing_manager.config))
+    return set_headers(jsonify(manager.config))
 
 @app.route('/config', methods=['GET'])
 def get_configuration():
@@ -61,7 +62,7 @@ def get_configuration():
     Returns:
         :obj:`flask.response`
     """
-    return set_headers(jsonify(processing_manager.config))
+    return set_headers(jsonify(manager.config))
 
 # Track Processing
 
