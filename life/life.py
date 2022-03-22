@@ -34,7 +34,7 @@ def timezone_offset(timezone):
 
     ex: timezone_offset("UTC+3") -> 3
     """
-    timezone = timezone.lower()
+    timezone = timezone.lower().strip()
     if timezone=="utc":
         return 0
     else:
@@ -191,7 +191,7 @@ class Life:
                     if self.curday:
                         self.days.append(self.curday)                    
                     self.curdate = line[2:].strip()
-                    self.curday = Day(self.curdate)    
+                    self.curday = Day(self.curdate)
                 elif line[:3] == "utc":
                     self.curtimezone = line
                 elif line[:4] == "@utc":                    
@@ -600,6 +600,7 @@ class Day:
         tmp = "--"+self.date +"\n"
         if self.spans[0].start_timezone==self.spans[0].end_timezone:
             tmp += "%s\n" % timezone_from_offset(self.spans[0].start_timezone)
+        print(self.spans)
         for s in self.spans:
             tmp+=str(s)+"\n"
         return tmp
@@ -805,19 +806,5 @@ class Span:
 
 
 
-if __name__=="__main__":
-    l=Life("location_semantics.txt")
-    for d in l:
-        if "community day" in d.notes:
-            print(d.date)
-            
-    for s in l.days[42]:
-        print(s)
-    print(l.days[13])
-    print(l.category_of("ist"))
-    print("\n")
-    print(l.placename_at("pavilhão atlântico","2017-06-17"))
-    print(l.current_placename("sbc fórum algarve"))
-    print(l.update_to_superplaces(l.update_places(l["2011_01_22"])))
-#    for d in l:
-#        print(d)
+# if __name__=="__main__":
+#     l=Life("location_semantics.txt")

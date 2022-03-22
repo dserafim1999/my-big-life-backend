@@ -250,6 +250,8 @@ class ProcessingManager(object):
             self.current_step = Step.done
             self.history = []
 
+        print(list(self.queue.items()))
+
         return self
 
     def change_day(self, day):
@@ -754,9 +756,16 @@ class ProcessingManager(object):
         return modes['classification']
 
     def remove_day(self, day):
-        if day in list(self.queue.keys()):
+        existing_days = list(self.queue.keys())
+        if day in existing_days:
             if day == self.current_day:
-                self.next_day()
+                if len(existing_days) > 1:
+                    self.next_day()
+                else:
+                    self.queue = {}
+                    self.current_day = None
+                    self.current_step = Step.done
+                    self.history = []
             else:
                 del self.queue[day]
 
