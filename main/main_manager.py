@@ -7,7 +7,7 @@ from os.path import expanduser, isfile
 from main import db
 from utils import update_dict
 
-from trackprocessing.default_config import CONFIG
+from main.default_config import CONFIG
 
 
 class MainManager(object):

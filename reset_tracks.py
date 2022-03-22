@@ -4,7 +4,7 @@ from os import listdir, replace, remove
 from os.path import join, expanduser, isfile
 from main import db
 
-from trackprocessing.default_config import CONFIG
+from main.default_config import CONFIG
 
 def update_dict(target, updater):
         """ Updates a dictionary, keeping the same structure

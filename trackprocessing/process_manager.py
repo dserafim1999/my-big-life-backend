@@ -17,7 +17,7 @@ from main import db
 from life.life import Life
 from utils import update_dict
 
-from trackprocessing.default_config import CONFIG
+from main.default_config import CONFIG
 
 def inside(to_find, modes):
     for elm in to_find:

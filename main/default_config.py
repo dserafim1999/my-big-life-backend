@@ -39,6 +39,7 @@ CONFIG = {
         'min_samples': 2,
         'limit': 5,
         'use_google': True,
+        "google_maps_api_key": '',
         'google_key': '',
         'use_foursquare': True,
         'foursquare_client_id': '',
