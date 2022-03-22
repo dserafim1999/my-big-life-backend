@@ -7,14 +7,15 @@
   "db": {
     "host": "localhost",
     "port": 5432,
-    "name": "pmsteps",
-    "user": "pmsteps",
-    "pass": "pmsteps"
+    "name": "postgres",
+    "user": "postgres",
+    "pass": "postgres"
   },
   "transportation": {
-    "classifier_path": "classifier.data"
+    "classifier_path": ""
   },
   "location": {
+    "google_maps_api_key": "",
     "google_key": "",
     "foursquare_client_id": "",
     "foursquare_client_secret": ""
