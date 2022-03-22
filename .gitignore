@@ -66,3 +66,4 @@ venv/
 # tracks
 
 tracks/
+config.json
