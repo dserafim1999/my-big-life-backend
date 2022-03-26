@@ -600,7 +600,7 @@ class Day:
         tmp = "--"+self.date +"\n"
         if self.spans[0].start_timezone==self.spans[0].end_timezone:
             tmp += "%s\n" % timezone_from_offset(self.spans[0].start_timezone)
-        print(self.spans)
+        #print(self.spans)
         for s in self.spans:
             tmp+=str(s)+"\n"
         return tmp
@@ -684,7 +684,6 @@ class Span:
         else:
             self.semantics=[x.strip() for x in self.semantics.split("|")]
         self.place = self.place.strip()
-
 
     def multiplace(self):
         """Return true if span contains 'indoor trip', False otherwise."""
@@ -782,7 +781,7 @@ class Span:
         """Return end time in local timezone in ISO format
         (eg: 2015-02-12T23:32:00)
         """
-        return well_formed_date(self.day,end.start)
+        return well_formed_date(self.day,self.end)
 
 
     def __repr__(self):

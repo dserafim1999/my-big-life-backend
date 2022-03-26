@@ -1,9 +1,9 @@
 {
-  "input_path": "~/tracks/input",
-  "backup_path": "~/tracks/backup",
-  "output_path": "~/tracks/dest/",
-  "life_path": "~/tracks/life/",
-  "life_all": "~/tracks/my.life",
+  "input_path": "C:\\Users\\dsera\\Documents\\GitHub\\my-big-life-backend\\tracks\\input\\",
+  "backup_path": "C:\\Users\\dsera\\Documents\\GitHub\\my-big-life-backend\\tracks\\backup\\",
+  "output_path": "C:\\Users\\dsera\\Documents\\GitHub\\my-big-life-backend\\tracks\\dest\\",
+  "life_path": "C:\\Users\\dsera\\Documents\\GitHub\\my-big-life-backend\\tracks\\life\\",
+  "life_all": "C:\\Users\\dsera\\Documents\\GitHub\\my-big-life-backend\\tracks\\my.life",
   "db": {
     "host": "localhost",
     "port": 5432,
@@ -15,7 +15,7 @@
     "classifier_path": ""
   },
   "location": {
-    "google_maps_api_key": "",
+    "google_maps_api_key": "AIzaSyB5t7hSzpEmx1hk6clwou9wdQCpIvpDvP8",
     "google_key": "",
     "foursquare_client_id": "",
     "foursquare_client_secret": ""
