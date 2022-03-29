@@ -1,3 +1,4 @@
+from time import time
 from urllib.parse import urlencode
 import requests
 import random
@@ -134,15 +135,31 @@ class LIFEToTrackConverter(object):
         return kms 
         
     def get_route(self, start, end, start_time, end_time, data_type = 'json'):
-        endpoint = f"https://maps.googleapis.com/maps/api/directions/{data_type}"
-        params= {"destination": start, "origin": end, "key":  self.config['location']['google_maps_api_key']}
-        url_params = urlencode(params)
-        url = f"{endpoint}?{url_params}"
+        start_datetime = datetime.strptime(start_time,'%Y-%m-%dT%H:%M:%SZ')
+        end_datetime = datetime.strptime(end_time,'%Y-%m-%dT%H:%M:%SZ')
+        total_time = (end_datetime - start_datetime).total_seconds() / 60
+
+        timestamp = start_datetime
 
         if (start in self.routes and end in self.routes[start]):
-            return self.routes[start][end]
-        
-        r = requests.get(url)
+            total_distance = self.routes[start]['total_distance']
+            points = self.routes[start][end]
+            n_points = len(points)
+
+            avg_time_btwn_points = self.calculate_avg_time_btwn_points(total_distance, total_time, n_points)
+            
+            for point in points:
+                point['time'] = timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
+                timestamp += timedelta(minutes=avg_time_btwn_points)
+
+            return points
+        else:
+            endpoint = f"https://maps.googleapis.com/maps/api/directions/{data_type}"
+            params= {"destination": start, "origin": end, "key":  self.config['location']['google_maps_api_key']}
+            url_params = urlencode(params)
+            url = f"{endpoint}?{url_params}"
+
+            r = requests.get(url)
 
         result = {}
         if r.status_code not in range(200, 299):
@@ -156,32 +173,28 @@ class LIFEToTrackConverter(object):
 
         polyline_points = result['routes'][0]['overview_polyline']['points']
         total_distance = self.parse_distance_in_kms(result['routes'][0]['legs'][0]['distance']['text'])
-        start_datetime = datetime.strptime(start_time,'%Y-%m-%dT%H:%M:%SZ')
-        end_datetime = datetime.strptime(end_time,'%Y-%m-%dT%H:%M:%SZ')
-
-        total_time = (end_datetime - start_datetime).total_seconds() / 60
-
-        avg_speed = self.calculate_km_min(total_distance, total_time)
+        points = []
 
         polylines = polyline.decode(polyline_points)
         polylines.reverse()
         n_points = len(polylines)
         
-        avg_time_btwn_points = 0
-        if avg_speed > 0:
-            avg_time_btwn_points = (total_distance) / (avg_speed * n_points)
-        
-        timestamp = start_datetime
-        points = []
+        avg_time_btwn_points = self.calculate_avg_time_btwn_points(total_distance, total_time, n_points)
 
         for point in polylines:
-            points.append({'lat': point[0], 'lng': point[1], 'time': timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')})
+            points.append({'lat': point[0], 'lng': point[1], 'time': timestamp.strftime('%Y-%m-%dT%H:%M:%SZ'), 'total_distance': total_distance})
             timestamp += timedelta(minutes=avg_time_btwn_points)
 
-
-        self.routes[start] = {end: points}
+        self.routes[start] = {end: points, 'total_distance': total_distance}
 
         return points
+
+    def calculate_avg_time_btwn_points(self, total_distance, total_time, n_points):
+        avg_speed = self.calculate_km_min(total_distance, total_time)
+        if avg_speed > 0:
+            return (total_distance) / (avg_speed * n_points)
+        else: 
+            return 0
 
     def get_closest_place_coords(self, lat, lng, data_type = 'json'):
         endpoint = f"https://maps.googleapis.com/maps/api/geocode/{data_type}"
@@ -291,4 +304,4 @@ class LIFEToTrackConverter(object):
     
 if __name__=="__main__":
     t = LIFEToTrackConverter('life/a.life', 'config.json')
-    #t.LIFE_to_gpx()
+    t.LIFE_to_gpx()
