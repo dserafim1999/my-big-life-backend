@@ -39,7 +39,14 @@ class LIFEToTrackConverter(object):
         self.routes = {}
 
         self.days = self.life.days
+        self.get_bounds()
         self.get_places_in_LIFE()
+
+    def get_bounds(self):
+        point1 = {'lat': self.config['life_converter']['bounds']['point1']['lat'], 'lng': self.config['life_converter']['bounds']['point1']['lng']}
+        point2 = {'lat': self.config['life_converter']['bounds']['point2']['lat'], 'lng': self.config['life_converter']['bounds']['point2']['lng']}
+
+        self.bounds = [point1, point2]
 
     def get_places_in_LIFE(self):
         '''
@@ -57,7 +64,7 @@ class LIFEToTrackConverter(object):
                 coords = self.life.coordinates[place]
                 places[place] = f"{coords[0]},{coords[1]}"
             else:
-                places[place] =  self.random_point()
+                places[place] =  self.random_point_in_bounds()
 
             if (place in self.life.superplaces.keys()):
                 places[place] = places[self.life.superplaces[place]]
@@ -92,13 +99,9 @@ class LIFEToTrackConverter(object):
         # calculate the result
         return(c * r)
 
-    def random_point(self):
-        #TODO remove function, move to setup with bounds as parameter
-        return self.random_point_in_bounds((38.746898, -9.157293), (38.713286, -9.125020)) #bounding box of lisbon metropolitan area
-
-    def random_point_in_bounds(self, pointA, pointB):
-        lat = random.uniform(min(pointA[0], pointB[0]), max(pointA[0], pointB[0]))
-        lng = random.uniform(min(pointA[1], pointB[1]), max(pointA[1], pointB[1]))
+    def random_point_in_bounds(self):
+        lat = random.uniform(min(self.bounds[0]['lat'], self.bounds[1]['lat']), max(self.bounds[0]['lat'], self.bounds[1]['lat']))
+        lng = random.uniform(min(self.bounds[0]['lng'], self.bounds[1]['lng']), max(self.bounds[0]['lng'], self.bounds[1]['lng']))
 
         return f"{lat},{lng}"
         #return self.get_closest_place_coords(lat, lng)
@@ -153,21 +156,22 @@ class LIFEToTrackConverter(object):
                 timestamp += timedelta(minutes=avg_time_btwn_points)
 
             return points
-        else:
-            endpoint = f"https://maps.googleapis.com/maps/api/directions/{data_type}"
-            params= {"destination": start, "origin": end, "key":  self.config['location']['google_maps_api_key']}
-            url_params = urlencode(params)
-            url = f"{endpoint}?{url_params}"
+        
+        endpoint = f"https://maps.googleapis.com/maps/api/directions/{data_type}"
+        params= {"destination": start, "origin": end, "key":  self.config['life_converter']['google_maps_api_key']}
+        url_params = urlencode(params)
+        url = f"{endpoint}?{url_params}"
 
-            r = requests.get(url)
+        r = requests.get(url)
 
         result = {}
         if r.status_code not in range(200, 299):
             return {}
 
-        #TODO parameters check
         try:
-            result = r.json() 
+            result = r.json()
+            if 'OK' not in result['status']:
+                return {} 
         except:
             pass
 
@@ -198,7 +202,7 @@ class LIFEToTrackConverter(object):
 
     def get_closest_place_coords(self, lat, lng, data_type = 'json'):
         endpoint = f"https://maps.googleapis.com/maps/api/geocode/{data_type}"
-        params= {"latlng": str(lat)+','+str(lng), "key": self.config['location']['google_maps_api_key']}
+        params= {"latlng": str(lat)+','+str(lng), "key": self.config['life_converter']['google_maps_api_key']}
         url_params = urlencode(params)
         url = f"{endpoint}?{url_params}"
         r = requests.get(url)

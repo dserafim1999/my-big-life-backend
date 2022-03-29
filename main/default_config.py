@@ -15,6 +15,19 @@ CONFIG = {
         'user': None,
         'pass': None
     },
+    "life_converter": {
+        "google_maps_api_key": "",
+        "bounds": {
+        "point1": {
+            "lat": 38.746898,
+            "lng": -9.157293
+        },
+        "point2": {
+            "lat": 38.713286,
+            "lng": -9.125020
+        }
+        }
+    },
     'default_timezone': 1,
     'life_annotations': 'all', # all (for stays + trips), stays, trips
     'smoothing': {
@@ -39,7 +52,6 @@ CONFIG = {
         'min_samples': 2,
         'limit': 5,
         'use_google': True,
-        "google_maps_api_key": '',
         'google_key': '',
         'use_foursquare': True,
         'foursquare_client_id': '',
