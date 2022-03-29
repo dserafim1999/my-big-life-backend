@@ -250,8 +250,6 @@ class ProcessingManager(object):
             self.current_step = Step.done
             self.history = []
 
-        print(list(self.queue.items()))
-
         return self
 
     def change_day(self, day):
