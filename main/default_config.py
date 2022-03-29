@@ -28,7 +28,7 @@ CONFIG = {
         }
         }
     },
-    'default_timezone': 1,
+    'default_timezone': 0,
     'life_annotations': 'all', # all (for stays + trips), stays, trips
     'smoothing': {
         'use': True,

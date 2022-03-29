@@ -14,7 +14,6 @@
   "transportation": {
     "classifier_path": ""
   },
-  "default_timezone": 0,
   "life_converter": {
     "google_maps_api_key": "AIzaSyB5t7hSzpEmx1hk6clwou9wdQCpIvpDvP8",
     "bounds": {
