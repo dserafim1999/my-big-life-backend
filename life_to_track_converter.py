@@ -15,7 +15,6 @@ from life.life import Life
 
 from main.default_config import CONFIG
 
-#TODO refactor and make parameterizable
 #TODO documentation
 
 def indentation(n):
@@ -23,10 +22,11 @@ def indentation(n):
 
 class LIFEToTrackConverter(object):
     """ 
+
         
     """
 
-    def __init__(self, life_file, config_file):
+    def __init__(self, life_file, config_file, use_google_maps_api=False):
         self.config = dict(CONFIG)
 
         if config_file and isfile(expanduser(config_file)):
@@ -36,38 +36,47 @@ class LIFEToTrackConverter(object):
 
         self.life = Life()
         self.life.from_file(life_file)
+        # TODO refactor to new method that checks if api key exists or not
+        self.google_maps_api = use_google_maps_api
         self.routes = {}
 
         self.days = self.life.days
         self.get_bounds()
         self.get_places_in_LIFE()
 
+        self.LIFE_to_gpx()
+
     def get_bounds(self):
+        """ Stores bounds for random coordinates generation defined in the config file
+
+        Returns:
+            :obj:`list` of :obj:`dict` : Contains the two points that define an upper and lower corner of the bounds 
+        """
+        
         point1 = {'lat': self.config['life_converter']['bounds']['point1']['lat'], 'lng': self.config['life_converter']['bounds']['point1']['lng']}
         point2 = {'lat': self.config['life_converter']['bounds']['point2']['lat'], 'lng': self.config['life_converter']['bounds']['point2']['lng']}
 
         self.bounds = [point1, point2]
 
     def get_places_in_LIFE(self):
-        '''
-        get all places in file and associate random coords
-        '''
+        """ Get all places in LIFE file and associates random coordinates in the designated bounds
+        """ 
 
         places = {}
         place_names = self.life.all_places()
 
         for place in place_names:
-            if (place in places):
+            if (place in places): #if place was already added for being a subplace/name swap or location swap
                 continue
             
             if (place in self.life.coordinates):
                 coords = self.life.coordinates[place]
-                places[place] = f"{coords[0]},{coords[1]}"
+                places[place] = (coords[0], coords[1]) # if coordinates are explicitly defined in LIFE file, set them
             else:
-                places[place] =  self.random_point_in_bounds()
+                places[place] =  self.random_point_in_bounds() # assign random coordinates in predefined bounds
 
             if (place in self.life.superplaces.keys()):
-                places[place] = places[self.life.superplaces[place]]
+                places[place] = places[self.life.superplaces[place]] # if subplace, set the coordinates of its superplace
             
             if (place in self.life.nameswaps):
                 places[self.life.nameswaps[place][0]] = places[place] # if place changed name, copies coords from original to new
@@ -78,8 +87,14 @@ class LIFEToTrackConverter(object):
         self.places = places
 
     def distance(self, coords1, coords2): 
-        """
+        """ Calculates distance, in km, of two coordinates defined by latitude and longitude
         taken from https://www.geeksforgeeks.org/program-distance-two-points-earth/#:~:text=For%20this%20divide%20the%20values,is%20the%20radius%20of%20Earth.
+
+        Args:
+            coords1 (:obj:`dict`): Coordinates of the first point
+            coords2 (:obj:`dict`): Coordinates of the second point
+        Returns:
+            float: distance between both points
         """
         lon1 = radians(coords1['lng'])
         lon2 = radians(coords2['lng'])
@@ -93,58 +108,118 @@ class LIFEToTrackConverter(object):
     
         c = 2 * asin(sqrt(a))
         
-        # Radius of earth in kilometers. Use 3956 for miles
-        r = 6371
+        r = 6371 # Radius of earth in kilometers
         
-        # calculate the result
         return(c * r)
 
     def random_point_in_bounds(self):
+        """ Generates a random latitude/longitude pair inside predefined bounds
+        Returns:
+            :obj:`tuple`: Coordinates
+        """
+
         lat = random.uniform(min(self.bounds[0]['lat'], self.bounds[1]['lat']), max(self.bounds[0]['lat'], self.bounds[1]['lat']))
         lng = random.uniform(min(self.bounds[0]['lng'], self.bounds[1]['lng']), max(self.bounds[0]['lng'], self.bounds[1]['lng']))
 
-        return f"{lat},{lng}"
-        #return self.get_closest_place_coords(lat, lng)
+        return (lat, lng)
 
-    def calculate_km_min(self, distance, time):
-        """
-        km/min
+    def calculate_speed(self, distance, time):
+        """ Calculates the speed (in metres per second)
+        Args: 
+            distance (float): Distance (in metres)
+            time (int): Duration of route (in seconds)
+        Returns:
+            float: speed (in m/s)
         """
         if time == 0: 
             return 0 
         else: 
             return distance / time
 
-    def parse_duration_in_minutes(self, string):
-        words = string.split(" ")
-        hours = mins = 0
+    def parse_duration_in_seconds(self, response):
+        """ Parses duration from http request response into seconds
+        Args:
+            #TODO
+        Returns:
+            int: duration in seconds
+        """
+        result = 3600 * hours + 60 * mins
 
-        if "hour" in words[1]:
-            hours = int(words[0])
-            if len(words) == 4:
-                mins = int(words[2])
-        elif "min" in words[1]:
-            mins = int(words[0])
+        if self.google_maps_api:
+            string = response['routes'][0]['legs'][0]['distance']['text']
+            words = string.split(" ")
+            hours = mins = 0
 
-        return 60 * hours + mins 
-
-    def parse_distance_in_kms(self, string):
-        words = string.split(" ")
-        kms = 0
-
-        if "km" in words[1]:
-            kms = float(words[0])
-            
-        return kms 
+            if "hour" in words[1]:
+                hours = int(words[0])
+                if len(words) == 4:
+                    mins = int(words[2])
+            elif "min" in words[1]:
+                mins = int(words[0])
+        else:
+            result = response['routes'][0]['summary']['travelTimeInSeconds']
         
+        return result
+
+    def parse_distance_in_metres(self, response):
+        """ Parses distance from http request response into metres
+        Args:
+            # TODO
+        Returns:
+            float: distance in metres 
+        """
+        result = 0
+
+        if self.google_maps_api:
+            string = response['routes'][0]['legs'][0]['distance']['text']
+
+            words = string.split(" ")
+            kms = 0
+
+            if "km" in words[1]:
+                kms = float(words[0])
+                
+            result = kms * 1000
+        else:
+            result = response['routes'][0]['summary']['lengthInMeters']
+
+        return result
+    
+    def parse_coords(self, coords):
+        """ Parses coordinates into a formatted string for an http request attribute to the Google Maps API
+        Args:
+            string (string): response from the http request of the 'distance' attribute
+        Returns:
+            float: distance in kilometres 
+        """
+        return f"{coords[0]},{coords[1]}"
+
+    def parse_points(self, result):
+        if self.google_maps_api:
+            polyline_points = result['routes'][0]['overview_polyline']['points'] 
+            return polyline.decode(polyline_points)
+        else:
+            return [(point['latitude'], point['longitude']) for point in result['routes'][0]['legs'][0]['points']]
+
     def get_route(self, start, end, start_time, end_time, data_type = 'json'):
+        """ Calculates route for a span, from "start" to "end", that starts at "start_time" and ends at "end_time"
+        Args:
+            start (string): coordinates (or location name) of the route's origin
+            end (string): coordinates (or location name) of the route's destination
+            start_time (string): formatted string representing the route's start time in the `%Y-%m-%dT%H:%M:%SZ` format
+            end_time (string): formatted string representing the route's end time in the `%Y-%m-%dT%H:%M:%SZ` format
+        Returns:
+            :obj:`list` of :obj:`dict`: list containing the latitude, longitude and timestamps of the points that describe the route
+        """
+
         start_datetime = datetime.strptime(start_time,'%Y-%m-%dT%H:%M:%SZ')
         end_datetime = datetime.strptime(end_time,'%Y-%m-%dT%H:%M:%SZ')
-        total_time = (end_datetime - start_datetime).total_seconds() / 60
+        total_time = (end_datetime - start_datetime).total_seconds()
 
         timestamp = start_datetime
 
-        if (start in self.routes and end in self.routes[start]):
+        # check if the route has been calculated previously, and updates timestamps
+        if (start in self.routes and end in self.routes[start]): 
             total_distance = self.routes[start]['total_distance']
             points = self.routes[start][end]
             n_points = len(points)
@@ -153,15 +228,22 @@ class LIFEToTrackConverter(object):
             
             for point in points:
                 point['time'] = timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
-                timestamp += timedelta(minutes=avg_time_btwn_points)
+                timestamp += timedelta(seconds=avg_time_btwn_points)
 
             return points
         
-        endpoint = f"https://maps.googleapis.com/maps/api/directions/{data_type}"
-        params= {"destination": start, "origin": end, "key":  self.config['life_converter']['google_maps_api_key']}
+        # http request setup
+        if self.google_maps_api:
+            endpoint = f"https://maps.googleapis.com/maps/api/directions/{data_type}"
+            params = {"origin": start, "destination": end, "key":  self.config['life_converter']['google_maps_api_key']}
+        else:
+            endpoint = f"https://api.tomtom.com/routing/1/calculateRoute/{start}:{end}/{data_type}"
+            params = {"routeRepresentation": "polyline", "key":  self.config['life_converter']['tom_tom_api_key']} 
+
         url_params = urlencode(params)
         url = f"{endpoint}?{url_params}"
 
+        # requests directions between 2 locations from the either the Tom Tom Routing or Google Maps Directions API 
         r = requests.get(url)
 
         result = {}
@@ -170,54 +252,42 @@ class LIFEToTrackConverter(object):
 
         try:
             result = r.json()
-            if 'OK' not in result['status']:
+            if 'OK' not in result['status'] or 'detailedError' in result: # checks if request was successful 
                 return {} 
         except:
             pass
 
-        polyline_points = result['routes'][0]['overview_polyline']['points']
-        total_distance = self.parse_distance_in_kms(result['routes'][0]['legs'][0]['distance']['text'])
+        raw_points = self.parse_points(result) # points that describe the route
+        total_distance = self.parse_distance_in_metres(result)
+
+        n_points = len(raw_points)
+        
+        avg_time_btwn_points = self.calculate_avg_time_btwn_points(total_distance, total_time, n_points) # calculates step between points (just an average)
+        
         points = []
 
-        polylines = polyline.decode(polyline_points)
-        polylines.reverse()
-        n_points = len(polylines)
-        
-        avg_time_btwn_points = self.calculate_avg_time_btwn_points(total_distance, total_time, n_points)
+        for point in raw_points:
+            points.append({'lat': point[0], 'lng': point[1], 'time': timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')})
+            timestamp += timedelta(seconds=avg_time_btwn_points)
 
-        for point in polylines:
-            points.append({'lat': point[0], 'lng': point[1], 'time': timestamp.strftime('%Y-%m-%dT%H:%M:%SZ'), 'total_distance': total_distance})
-            timestamp += timedelta(minutes=avg_time_btwn_points)
-
-        self.routes[start] = {end: points, 'total_distance': total_distance}
+        self.routes[start] = {end: points, 'total_distance': total_distance} # saves calculated route for future reference 
 
         return points
 
     def calculate_avg_time_btwn_points(self, total_distance, total_time, n_points):
-        avg_speed = self.calculate_km_min(total_distance, total_time)
+        """ Calculates the average time between each point in a route, taking into consideration the route's total duration and distance
+        Args:
+            total_distance (float): route's total distance in metres
+            total_time (int): route's total duration in seconds
+            n_points (int): number of points that define the route
+        Returns:
+            float: average time between the route's points, in seconds
+        """
+        avg_speed = self.calculate_speed(total_distance, total_time)
         if avg_speed > 0:
             return (total_distance) / (avg_speed * n_points)
         else: 
             return 0
-
-    def get_closest_place_coords(self, lat, lng, data_type = 'json'):
-        endpoint = f"https://maps.googleapis.com/maps/api/geocode/{data_type}"
-        params= {"latlng": str(lat)+','+str(lng), "key": self.config['life_converter']['google_maps_api_key']}
-        url_params = urlencode(params)
-        url = f"{endpoint}?{url_params}"
-        r = requests.get(url)
-        result = {}
-
-        #TODO parameters check
-
-        if r.status_code not in range(200, 299):
-            return {}
-        try:
-            result = r.json() 
-        except:
-            pass
-        coords = result['results'][0]['geometry']['location']
-        return f"{coords['lat']},{coords['lng']}"
 
     def get_segments(self, day): 
         #a followed by b, get route between a and b starting with a start time and ending with b end time
@@ -234,14 +304,14 @@ class LIFEToTrackConverter(object):
                 continue
 
             if (span.multiplace()):
-                start_coords = self.places[span.place[0]]
-                end_coords = self.places[span.place[1]]
+                start_coords = self.parse_coords(self.places[span.place[0]])
+                end_coords = self.parse_coords(self.places[span.place[1]])
 
                 start_time = span.start_utc()
                 end_time = span.end_utc()
             else: 
-                start_coords = self.places[prev_span.place]
-                end_coords = self.places[span.place]
+                start_coords = self.parse_coords(self.places[prev_span.place])
+                end_coords = self.parse_coords(self.places[span.place])
                 
                 start_time = prev_span.end_utc()
                 end_time = span.start_utc()
@@ -255,7 +325,30 @@ class LIFEToTrackConverter(object):
         
         return res
 
+    def point_gpx(self, point):
+        """ Parses a point into an xml tag for the gpx file that defines the track 
+        Args:
+            point (:obj:`dict`): route point defined by latitude (lat), longitude (lng) and timestamp (time)
+        Returns:
+            string: xml tag <trkpt> that defines a point in the gpx format
+        """
+        return ''.join([
+            indentation(3),
+            '<trkpt lat="' + str(point['lat']) + '" lon="' + str(point['lng']) + '">\n',
+            indentation(4),
+            '<time>' + str(point['time']) + '</time>\n',
+            indentation(3),
+            '</trkpt>'
+        ]) + '\n'
+
     def segment_gpx(self, segment):
+        """ Parses a segment of a route into an xml tag for the gpx file that defines the track 
+        Args:
+            segment (:obj:`list` of :obj:`dict`): list of points that define a segment of the route
+        Returns:
+            string: xml tag <trkseg> that defines a segment in the gpx format
+        """
+
         if (len(segment) == 0):
             return ''
 
@@ -267,17 +360,15 @@ class LIFEToTrackConverter(object):
             indentation(2) + '</trkseg>\n',
         ]) + '\n'
 
-    def point_gpx(self, point):
-        return ''.join([
-            indentation(3),
-            '<trkpt lat="' + str(point['lat']) + '" lon="' + str(point['lng']) + '">\n',
-            indentation(4),
-            '<time>' + str(point['time']) + '</time>\n',
-            indentation(3),
-            '</trkpt>'
-        ]) + '\n'
 
     def to_gpx(self, day):
+        """ Parses a route into an xml representation for the gpx file that defines the track 
+        Args:
+            day (:obj:`life.Day`): life.Day object that contains information about the date and the spans of a day 
+        Returns:
+            string: xml that defines the route in the gpx format
+        """
+
         all_segments = self.get_segments(day)
 
         if (len(all_segments) == 0):
@@ -296,16 +387,23 @@ class LIFEToTrackConverter(object):
         ])
     
     def LIFE_to_gpx(self):
+        """
+        """
         for day in self.days:
             self.generate_gpx_file(day)
         return None
 
     def generate_gpx_file(self, day):
+        """ Creates a file in the gpx format that defines a day
+        Args:
+            day (:obj:`life.Day`): life.Day object that contains information about the date and the spans of a day 
+        """
+
         with open(f"tracks\\input\\{day.date}.gpx", "w+") as f:
                 f.write(self.to_gpx(day))
                 f.close()
             
     
 if __name__=="__main__":
-    t = LIFEToTrackConverter('life/a.life', 'config.json')
-    t.LIFE_to_gpx()
+    LIFEToTrackConverter('life/a.life', 'config.json')
+ 
