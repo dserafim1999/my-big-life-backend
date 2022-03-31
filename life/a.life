@@ -15,7 +15,7 @@ UTC                           ;setting the "default timezone"
 2201-2359: home
 
 @beef delight<shopping mall   ; the restaurant is inside the mall!
-
+@ist @38.736771, -9.138920
 
 
 ; now, we'll see some tagging and annotation. For instance, John decides to tag where he eats,
@@ -23,18 +23,18 @@ UTC                           ;setting the "default timezone"
 
 --2016_01_03
 0000-0721: home
-0801-1202: work
+0801-1202: ist
 1223-1303: Pizza Place [lunch]                  ; tagged as a lunch place
-1321-1802: work
+1321-1802: ist
 1827-2101: Stellar Cinemas [movies] {Deadpool}  ; tagged as movie theater, semantics tells which movie
 2107-2143: burger king [dinner]                 ; tagged as a dinner place
 2227-2359: home
 
 --2016_01_04
 0000-0725: home
-0807-1215: work
+0807-1215: ist
 1231-1330: Le Bistro [lunch]
-1342-1812: work
+1342-1812: ist
 1837-1845: supermarket
 1855-2359: home   [dinner]
 
@@ -74,13 +74,13 @@ UTC                           ;setting the "default timezone"
 ; changed transport, only that he used different mods
 --2016_01_08
 0000-0715: home
-0715-0801: home->work [walk|bus]
-0801-1216: work
-1216-1229: work->Le Bistro [walk]
+0715-0801: home->ist [walk|bus]
+0801-1216: ist
+1216-1229: ist->Le Bistro [walk]
 1229-1342: Le Bistro [lunch]
-1342-1358: Le Bistro->work [walk]
-1358-1812: work
-1812-1837: work->home [walk|bus]
+1342-1358: Le Bistro->ist [walk]
+1358-1812: ist
+1812-1837: ist->home [walk|bus]
 1837-2359: home   [dinner]
 
 
@@ -90,16 +90,16 @@ UTC                           ;setting the "default timezone"
 0000-0705: home
 0705-0712: home->bus stop close to home [walk]
 0712-0734: bus stop close to home
-0734-0801: bus stop close to home -> bus stop close to work [bus|bus:767]  ; rode bus 767
-0801-0811: bus stop close to work -> work [walk]
-0811-1211: work
-1211-1219: work->Le Bistro [walk]
+0734-0801: bus stop close to home -> bus stop close to ist [bus|bus:767]  ; rode bus 767
+0801-0811: bus stop close to ist -> ist [walk]
+0811-1211: ist
+1211-1219: ist->Le Bistro [walk]
 1219-1331: Le Bistro [lunch]
-1331-1350: Le Bistro->work [walk]
-1350-1822: work
-1822-1824: work->bus stop close to work [walk]
-1824-1825: bus stop close to work
-1825-1841: bus stop close to work->bus stop close to home [bus|bus:767]
+1331-1350: Le Bistro->ist [walk]
+1350-1822: ist
+1822-1824: ist->bus stop close to ist [walk]
+1824-1825: bus stop close to ist
+1825-1841: bus stop close to ist->bus stop close to home [bus|bus:767]
 1841-1848: bus stop close to home->home [walk]
 1848-2359: home   [dinner]
 
@@ -109,6 +109,8 @@ UTC                           ;setting the "default timezone"
 
 ; John decided he doesn't need to know the places where he gets on buses, etc. after all.
 ; so he'll use simply the sub-span annotations
+
+@ist>>work
 
 --2016_01_10
 0000-0705: home

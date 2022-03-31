@@ -1,8 +1,9 @@
-from time import time
 from urllib.parse import urlencode
+from xmlrpc.client import Boolean
 import requests
 import random
 import polyline
+import argparse
 from datetime import datetime, timedelta
 
 from math import radians, cos, sin, asin, sqrt
@@ -15,10 +16,24 @@ from life.life import Life
 
 from main.default_config import CONFIG
 
-#TODO documentation
+#TODO finish documentation
+#TODO explain api setup
+#TODO move to /life
+
+parser = argparse.ArgumentParser(description='')
+parser.add_argument('--config', '-c', dest='config', metavar='c', type=str,
+        help='configuration file')
+parser.add_argument('--life', '-l', dest='life', metavar='l', type=str,
+        help='life file', required=True)
+parser.add_argument('--google', '-g', dest='use_google_maps_api', metavar='g', type=Boolean,
+        help='use google maps api (default False)')
+args = parser.parse_args()
 
 def indentation(n):
         return ''.join('\t' for i in range(n))
+
+FAIL_COLOR = '\033[91m'
+END_COLOR = '\033[0m'
 
 class LIFEToTrackConverter(object):
     """ 
@@ -36,15 +51,39 @@ class LIFEToTrackConverter(object):
 
         self.life = Life()
         self.life.from_file(life_file)
-        # TODO refactor to new method that checks if api key exists or not
+        
         self.google_maps_api = use_google_maps_api
         self.routes = {}
 
         self.days = self.life.days
+        self.set_api()
+
         self.get_bounds()
         self.get_places_in_LIFE()
 
         self.LIFE_to_gpx()
+    
+    def set_api(self):
+        if len(self.config['life_converter']['google_maps_api_key']) == 0 and len(self.config['life_converter']['tom_tom_api_key']) == 0:
+            print(f"{FAIL_COLOR}No API set to generate routes.\nPlease set a Google Maps or TomTom API key in your configuration JSON file.{END_COLOR}")
+            quit()
+
+        if self.google_maps_api:
+            if len(self.config['life_converter']['google_maps_api_key']) > 0:
+                self.api_key = self.config['life_converter']['google_maps_api_key']
+                print("Using Google Maps Directions API to generate routes...")
+            elif len(self.config['life_converter']['tom_tom_api_key']) > 0:
+                self.api_key = self.config['life_converter']['tom_tom_api_key']
+                self.google_maps_api = False
+                print("Using Tom Tom Routing API to generate routes...")
+        else:
+            if len(self.config['life_converter']['tom_tom_api_key']) > 0:
+                self.api_key = self.config['life_converter']['tom_tom_api_key']
+                self.google_maps_api = False
+                print("Using Tom Tom Routing API to generate routes...")
+            elif len(self.config['life_converter']['google_maps_api_key']) > 0:
+                self.api_key = self.config['life_converter']['google_maps_api_key']
+                print("Using Google Maps Directions API to generate routes...")
 
     def get_bounds(self):
         """ Stores bounds for random coordinates generation defined in the config file
@@ -405,5 +444,12 @@ class LIFEToTrackConverter(object):
             
     
 if __name__=="__main__":
-    LIFEToTrackConverter('life/a.life', 'config.json')
+    use_google_maps_api = args.use_google_maps_api
+    life_file = args.life
+    config_file = args.config
+
+    if use_google_maps_api == None:
+        use_google_maps_api = False
+
+    LIFEToTrackConverter(life_file, config_file, use_google_maps_api)
  

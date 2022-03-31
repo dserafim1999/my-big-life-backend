@@ -1,0 +1,306 @@
+--2011_05_01
+0000-1345:casa faro [lunch]
+1352-1357:pingo doce penha
+1404-1417:casa faro
+1727-2359:casa [dinner]
+
+
+--2011_05_02
+0000-0848:casa
+0900-1215:inesc-id
+1217-1320:rota do colombo [lunch]
+1323-1605:inesc-id
+1613-1731:ist
+1744-1748:tabacaria pinguim
+1752-2359:casa [dinner]
+
+
+--2011_05_03
+0000-0831:casa
+0852-1042:ist
+1047-1215:inesc-id
+1218-1311:rota do colombo [lunch]
+1314-1624:inesc-id
+1634-1836:cinema city campo pequeno [movies:Scream 4]
+1845-1926:mcdonalds saldanha [dinner]
+1946-2359:casa
+
+
+--2011_05_04
+0000-0734:casa
+0754-0841:gdine
+0855-1234:inesc-id
+1316-1326:rota do colombo [lunch]
+1330-1605:inesc-id
+1611-1736:ist
+1737-1835:infantário da apist
+1849-2359:casa [dinner:telepizza]
+
+
+--2011_05_05
+0000-0841:casa
+0906-1210:inesc-id
+1214-1313:siga la vaca [lunch]
+1319-1405:inesc-id
+1410-1652:ist
+1654-1809:gdine
+1839-2359:casa [dinner]
+
+
+--2011_05_06
+0000-0845:casa
+0859-1105:ist
+1110-1158:inesc-id
+1207-1255:rota do colombo [lunch]
+1259-1430:inesc-id
+1442-1727:ist
+1805-2036:casa
+2054-2359:bem-me-quer [dinner]
+
+
+
+--2011_05_07
+0000-0025:bem-me-quer
+0044-0946:casa
+1002-1019:campo pequeno
+1042-1047:akiáfesta
+1049-1132:restaurante borges
+1147-1318:akiáfesta
+1348-1353:keyla
+1354-1830:casa [lunch]
+1848-2039:feira do livro
+2047-2120:h3 el corte inglés [dinner]
+2120-2324:UCI el corte inglés [movies:Unknown]
+2343-2359:casa
+
+
+--2011_05_08
+0000-1710:casa [lunch]
+1723-1728:loja do chinês da estefânia
+1739-1810:modelo
+1816-1905:casa
+1921-2010:Restaurante Palácio de Hong Kong [dinner]
+2026-2359:casa
+
+
+--2011_05_09
+0000-0854:casa
+0906-1006:gdine
+1017-1222:inesc-id
+1224-1329:rota do colombo [lunch]
+1336-1557:inesc-id
+1608-1741:ist
+1808-1845:liset
+1854-2359:casa [dinner]
+
+
+--2011_05_10
+0000-0827:casa
+0848-1057:ist
+1102-1220:inesc-id
+1222-1309:rota do colombo [lunch]
+1314-1621:inesc-id
+1634-1833:campo pequeno
+1922-2359:casa [dinner]
+
+
+--2011_05_11
+0000-0856:casa
+0905-1214:inesc-id
+1215-1309:rota do colombo [lunch]
+1313-1606:inesc-id
+1613-1734:ist
+1809-2359:casa [dinner:telepizza]
+
+
+--2011_05_12
+0000-0729:casa
+0743-0756:infantário da apist
+0804-1055:inesc-id
+1057-1229:ist
+1233-1332:inesc-id
+1334-1402:rota do colombo [lunch]
+1412-1702:ist
+1703-1757:gdine
+1836-1919:mcdonalds saldanha [dinner]
+1938-2359:casa
+
+
+--2011_05_13
+0000-1820:casa [lunch]
+1921-2041:praia de são pedro do estoril
+2041-2253:esplanada de são pedro [dinner]
+2344-2359:casa
+
+
+--2011_05_14
+0000-1717:casa [lunch]
+1722-1740:modelo
+1745-2359:casa [dinner]
+
+
+--2011_05_15
+0000-2359:casa [lunch|dinner]
+
+
+--2011_05_16
+0000-0839:casa
+0901-0957:gdine
+1007-1218:inesc-id
+1221-1310:rota do colombo [lunch]
+1314-1426:inesc-id
+1433-2007:casa
+2016-2359:hospital da estefânia
+
+
+--2011_05_17
+0000-0009:hospital da estefânia
+0020-0841:casa
+0859-1044:ist
+1049-1201:inesc-id
+1213-2359:casa [lunch|dinner]
+
+
+--2011_05_18
+0000-0838:casa
+0858-0957:gdine
+1007-1241:inesc-id
+1243-1350:rota do colombo [lunch]
+1354-1605:inesc-id
+1610-1737:ist
+1744-1748:casa senna
+1751-1805:modelo
+1810-2359:casa [dinner:telepizza]
+
+
+--2011_05_19
+0000-0850:casa
+0902-1226:inesc-id
+1228-1329:rota do colombo [lunch]
+1333-1407:inesc-id
+1413-1700:ist
+1702-1809:gdine
+1838-2359:casa [dinner]
+
+
+--2011_05_20
+0000-0937:casa
+0956-1205:inesc-id
+1209-1301:siga la vaca [lunch]
+1306-1408:inesc-id
+1412-1720:ist
+1840-1903:área de serviço montemor 
+2002-2102:casa elvas
+2006-2015:tif taf 2
+2119-2359:casa elvas [dinner]
+
+
+--2011_05_21
+0000-1935:casa elvas [lunch]
+1945-2011:golita
+2021-2121:casa elvas [dinner]
+2124-2131:onofre
+2147-2359:casa elvas
+
+
+--2011_05_22
+0000-1344:casa elvas [lunch]
+1352-1413:tif taf 2
+1415-1454:casa elvas
+1728-1745:casa
+1756-1851:praça josé fontana
+1913-2359:casa [dinner]
+
+
+--2011_05_23
+0000-0847:casa
+0918-1006:gdine
+1015-1158:inesc-id
+1200-1225:rota do colombo [lunch]
+1230-1253:smap
+1303-1602:inesc-id
+1608-1737:ist
+1740-1816:ist
+1827-1839:florista da estefânia
+1843-2359:casa [dinner]
+
+
+--2011_05_24
+0000-0859:casa
+0903-0931:ceradil
+0934-1648:casa [lunch]
+1653-1920:zon colombo [movies:Monsters]
+1920-2045:la parrilla colombo [dinner]
+2058-2359:casa
+
+
+--2011_05_25
+0000-0926:casa
+0929-0936:ceradil
+0947-1223:ist
+1223-1258:smap
+1304-1401:rota do colombo [lunch]
+1411-1745:inesc-id
+1829-1928:ana neves
+2002-2046:joshua's residence [dinner]
+2049-2111:praça josé fontana
+2120-2359:casa
+
+
+--2011_05_26
+0000-0851:casa
+0903-1213:inesc-id
+1215-1255:rota do colombo [lunch]
+1313-1348:colorfoto
+1417-1521:ist
+1523-1700:inesc-id
+1707-1757:gdine
+1832-2359:casa [dinner]
+
+
+
+--2011_05_27
+0000-0841:casa
+0911-1004:gdine
+1012-1219:inesc-id
+1228-1254:mcdonalds saldanha [lunch]
+1259-1427:inesc-id
+1431-1712:ist
+1749-1755:pastelaria são remo
+1755-1813:farmácia cardeira
+1815-1846:pastelaria são remo [dinner]
+1858-1916:farmácia mundial
+1919-1934:modelo
+1940-2103:casa
+2112-2142:praça josé fontana
+2152-2359:casa
+
+
+--2011_05_28
+0000-1756:casa [lunch]
+1851-2211:casa tânia [dinner]
+2316-2336:casa tânia
+
+
+
+--2011_05_29
+0019-1014:casa
+1105-1131:gulbenkian
+1149-1159:mcdonalds saldanha [lunch]
+1204-1217:pingo doce
+1229-1525:casa
+1606-1641:av. liberdade
+1709-1714:keyla
+1720-1922:casa
+1935-2125:portugália [dinner]
+2140-2359:casa
+
+
+
+--2011_05_30
+0000-0902:casa
+0937-1225:inesc-id
+1251-1314:siga la vaca [lunch]
+1318-1814:inesc-id
+1905-2359:casa [dinner]
+
