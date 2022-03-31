@@ -18,7 +18,6 @@ from main.default_config import CONFIG
 
 #TODO finish documentation
 #TODO explain api setup
-#TODO move to /life
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('--config', '-c', dest='config', metavar='c', type=str,
@@ -51,11 +50,10 @@ class LIFEToTrackConverter(object):
 
         self.life = Life()
         self.life.from_file(life_file)
-        
-        self.google_maps_api = use_google_maps_api
+        self.days = self.life.days
         self.routes = {}
 
-        self.days = self.life.days
+        self.google_maps_api = use_google_maps_api
         self.set_api()
 
         self.get_bounds()
@@ -64,10 +62,15 @@ class LIFEToTrackConverter(object):
         self.LIFE_to_gpx()
     
     def set_api(self):
+        """ Selects what API to use based on if explicitly set and/or based on what keys were set in the configuration file
+        """
+
+        # if no API key is set, quit program
         if len(self.config['life_converter']['google_maps_api_key']) == 0 and len(self.config['life_converter']['tom_tom_api_key']) == 0:
             print(f"{FAIL_COLOR}No API set to generate routes.\nPlease set a Google Maps or TomTom API key in your configuration JSON file.{END_COLOR}")
             quit()
 
+        # checks if Google API key is set, uses Tom Tom API key if not
         if self.google_maps_api:
             if len(self.config['life_converter']['google_maps_api_key']) > 0:
                 self.api_key = self.config['life_converter']['google_maps_api_key']
@@ -76,6 +79,8 @@ class LIFEToTrackConverter(object):
                 self.api_key = self.config['life_converter']['tom_tom_api_key']
                 self.google_maps_api = False
                 print("Using Tom Tom Routing API to generate routes...")
+
+        # checks if Tom Tom API key is set, uses Google API key if not
         else:
             if len(self.config['life_converter']['tom_tom_api_key']) > 0:
                 self.api_key = self.config['life_converter']['tom_tom_api_key']
@@ -178,7 +183,7 @@ class LIFEToTrackConverter(object):
     def parse_duration_in_seconds(self, response):
         """ Parses duration from http request response into seconds
         Args:
-            #TODO
+            response (:obj:`dict`:): http response for the routing request
         Returns:
             int: duration in seconds
         """
@@ -203,7 +208,7 @@ class LIFEToTrackConverter(object):
     def parse_distance_in_metres(self, response):
         """ Parses distance from http request response into metres
         Args:
-            # TODO
+            response (:obj:`dict`:): http response for the routing request
         Returns:
             float: distance in metres 
         """
@@ -225,20 +230,26 @@ class LIFEToTrackConverter(object):
         return result
     
     def parse_coords(self, coords):
-        """ Parses coordinates into a formatted string for an http request attribute to the Google Maps API
+        """ Parses coordinates into a formatted string for an http request 
         Args:
-            string (string): response from the http request of the 'distance' attribute
+            coords (:obj:`tuple`:): coordinate pair containing latitude and longitude
         Returns:
-            float: distance in kilometres 
+            string: formatted string to be set as an http request parameter 
         """
         return f"{coords[0]},{coords[1]}"
 
-    def parse_points(self, result):
+    def parse_points(self, response):
+        """ Parses points into a list of coordinate pairs
+        Args:
+            response (:obj:`tuple`:): http response for the routing request 
+        Returns:
+            float: distance in kilometres 
+        """
         if self.google_maps_api:
-            polyline_points = result['routes'][0]['overview_polyline']['points'] 
+            polyline_points = response['routes'][0]['overview_polyline']['points'] 
             return polyline.decode(polyline_points)
         else:
-            return [(point['latitude'], point['longitude']) for point in result['routes'][0]['legs'][0]['points']]
+            return [(point['latitude'], point['longitude']) for point in response['routes'][0]['legs'][0]['points']]
 
     def get_route(self, start, end, start_time, end_time, data_type = 'json'):
         """ Calculates route for a span, from "start" to "end", that starts at "start_time" and ends at "end_time"
@@ -328,10 +339,14 @@ class LIFEToTrackConverter(object):
         else: 
             return 0
 
-    def get_segments(self, day): 
-        #a followed by b, get route between a and b starting with a start time and ending with b end time
-        #a->b ignore a before, get route between a and b with start and end time of span
-        #point has lat, lng and time keys
+    def get_segments(self, day):
+        """ Calculates routes for all spans in a LIFE day. Connects two consecutive spans with a route that starts at the span location's 
+        final timestamp and ends at the second  span location's start timestamp.
+        Args:
+            day (:obj:`life.Day`): life.Day object that contains information about the date and the spans of a day 
+        Returns:
+            :obj:`list` of :obj:`list` of :obj:`dict`: list that contains a list of the points that define the selected day's routes 
+        """ 
 
         res = []
         
@@ -341,13 +356,16 @@ class LIFEToTrackConverter(object):
 
             if (prev_span.multiplace() or span.place == prev_span.place):
                 continue
-
+            
+            # if a route is specified in a span, we calculate it using those locations
             if (span.multiplace()):
                 start_coords = self.parse_coords(self.places[span.place[0]])
                 end_coords = self.parse_coords(self.places[span.place[1]])
 
                 start_time = span.start_utc()
                 end_time = span.end_utc()
+
+            # if not, we use the previous span to get the start time and location
             else: 
                 start_coords = self.parse_coords(self.places[prev_span.place])
                 end_coords = self.parse_coords(self.places[span.place])
@@ -426,11 +444,10 @@ class LIFEToTrackConverter(object):
         ])
     
     def LIFE_to_gpx(self):
-        """
+        """ Converts a file in the LIFE format into a file in the .gpx format describing a possible set of routes taken for each day
         """
         for day in self.days:
             self.generate_gpx_file(day)
-        return None
 
     def generate_gpx_file(self, day):
         """ Creates a file in the gpx format that defines a day

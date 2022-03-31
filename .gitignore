@@ -67,3 +67,4 @@ venv/
 
 tracks/
 config.json
+*.life
