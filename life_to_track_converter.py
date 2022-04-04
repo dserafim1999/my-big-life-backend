@@ -447,7 +447,9 @@ class LIFEToTrackConverter(object):
         """ Converts a file in the LIFE format into a file in the .gpx format describing a possible set of routes taken for each day
         """
         for day in self.days:
-            self.generate_gpx_file(day)
+            # Checks if day contains more than one location (in other words, contains at least one route)
+            if len(day.all_places()) > 1:
+                self.generate_gpx_file(day)
 
     def generate_gpx_file(self, day):
         """ Creates a file in the gpx format that defines a day
