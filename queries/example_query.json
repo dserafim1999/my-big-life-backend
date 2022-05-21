@@ -1,0 +1,33 @@
+{
+    "data":[
+        {
+           "date":"--/--/----"
+        },
+        {
+           "location":"local",
+           "start":"--:--",
+           "end":"--:--",
+           "spatialRange":"0m",
+           "temporalStartRange":"0min",
+           "temporalEndRange":"0min",
+           "duration":"duration"
+        },
+        {
+           "route":"route",
+           "duration":"duration",
+           "start":"--:--",
+           "end":"--:--",
+           "temporalStartRange":"0min",
+           "temporalEndRange":"0min"
+        },
+        {
+           "location":"local",
+           "start":"--:--",
+           "end":"--:--",
+           "spatialRange":"0m",
+           "temporalStartRange":"0min",
+           "temporalEndRange":"0min",
+           "duration":"duration"
+        }
+     ]
+}

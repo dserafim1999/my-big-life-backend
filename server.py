@@ -4,8 +4,10 @@ Entry point
 Spawns a server that coodinates the operations
 """
 import argparse
+from urllib import response
 from flask import Flask, request, jsonify
 from tracktotrip import Point
+from queries.query_manager import QueryManager
 from trackprocessing.process_manager import ProcessingManager
 from main.main_manager import MainManager
 
@@ -31,6 +33,7 @@ app = Flask(__name__)
 
 manager = MainManager(args.config)
 processing_manager = ProcessingManager(args.config)
+query_manager = QueryManager(args.config)
 
 
 # ROUTES
@@ -53,6 +56,7 @@ def set_configuration():
     payload = request.get_json(force=True)
     manager.update_config(payload)
     processing_manager.update_config(payload)
+    query_manager.update_config(payload)
     return set_headers(jsonify(manager.config))
 
 @app.route('/config', methods=['GET'])
@@ -189,6 +193,21 @@ def remove_day():
 def skip_day():
     processing_manager.next_day(delete=False)
     return send_state()
+
+
+# Queries 
+
+@app.route('/queries/execute', methods=['POST'])
+def execute_query():
+    """
+    Returns:
+        :obj:``
+    """
+    payload = request.get_json(force=True)
+    response = jsonify(query_manager.execute_query(payload))
+    print("response", response)
+    
+    return set_headers(response)
 
 # Helpers
 

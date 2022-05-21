@@ -40,11 +40,18 @@ def to_segment(gis_points, timestamps=None):
     Returns:
         :obj:`tracktotrip.Segment`
     """
-    gis_points = ppygis3.Geometry.read_ewkb(gis_points).points
+    gis_geometry = ppygis3.Geometry.read_ewkb(gis_points)
     result = []
-    for i, point in enumerate(gis_points):
-        tmstmp = timestamps[i] if timestamps is not None else None
-        result.append(Point(point.y, point.x, tmstmp))
+    
+    if type(gis_geometry) is ppygis3.Point:
+        result.append(Point(gis_geometry.y, gis_geometry.x, timestamps))
+    else:
+        gis_points = gis_geometry.points
+
+        for i, point in enumerate(gis_points):
+            tmstmp = timestamps[i] if timestamps is not None else None
+            result.append(Point(point.y, point.x, tmstmp))
+
     return Segment(result)
 
 def adapt_segment(segment):
@@ -95,7 +102,7 @@ def life_time(point):
     time = point.time.time()
     return "%02d%02d" % (time.hour, time.minute)
 
-def load_from_segments_annotated(cur, track, life_content, max_distance, min_samples, add_segment = True):
+def load_from_segments_annotated(cur, track, life_content, max_distance, min_samples, insert_locs = True):
     """ Uses a LIFE formated string to populate the database
 
     Args:
@@ -123,12 +130,12 @@ def load_from_segments_annotated(cur, track, life_content, max_distance, min_sam
                 for loc in location:
                     insert_location(cur, loc, point, max_distance, min_samples)
 
-    if add_segment:
+    if insert_locs:
         for segment in track.segments:
             in_loc(segment.points, 0)
             in_loc(segment.points, -1)
             # find trip
-            insert_segment(cur, segment, max_distance, min_samples)
+            #insert_segment(cur, segment, max_distance, min_samples)
 
     # Insert stays
     for day in life.days:
@@ -338,15 +345,15 @@ def insert_segment(cur, segment, max_distance, min_samples):
     # def toTsmp(d):
     #     return psycopg2.Timestamp(d.year, d.month, d.day, d.hour, d.minute, d.second)
 
-    tstamps = [p.time for p in segment.points]
+    tstamps = [p.time.replace(second=0, microsecond=0) for p in segment.points]
 
     cur.execute("""
             INSERT INTO trips (start_date, end_date, bounds, points, timestamps)
             VALUES (%s, %s, %s, %s, %s)
             RETURNING trip_id
             """, (
-                segment.points[0].time,
-                segment.points[-1].time,
+                segment.points[0].time.replace(second=0, microsecond=0),
+                segment.points[-1].time.replace(second=0, microsecond=0),
                 gis_bounds(segment.bounds()),
                 segment,
                 tstamps
