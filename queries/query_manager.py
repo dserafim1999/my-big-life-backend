@@ -231,7 +231,7 @@ class Range:
 
 
     def generate_query(self):
-        base_query = " SELECT DISTINCT stay_id, start_date, end_date, centroid FROM "
+        base_query = " SELECT DISTINCT stay_id, start_date, end_date, locations.centroid FROM "
         tables, with_chunks, where_chunks = self.query_chunks()
 
         query = ""
@@ -472,9 +472,9 @@ def fetch_from_db(cur, items):
 
     try:
         print(("started query ", datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]))
+        print(template)
         cur.execute(template)
         temp = cur.fetchall()
-        print(template)
         print(("ended query ", datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]))
 
         for result in temp:
