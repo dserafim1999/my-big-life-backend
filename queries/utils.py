@@ -64,6 +64,8 @@ def get_sign(duration): #get the first char, being the sign
 
 def get_all_but_sign(duration): #get the first char, being the sign
     result = ""
+    if duration.strip() == "":
+        return ""
     if not duration[0].isdigit():
         return duration[1:-1]
     else:

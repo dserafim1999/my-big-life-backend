@@ -205,7 +205,6 @@ def execute_query():
     """
     payload = request.get_json(force=True)
     response = jsonify(query_manager.execute_query(payload))
-    print("response", response)
     
     return set_headers(response)
 

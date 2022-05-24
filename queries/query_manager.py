@@ -52,6 +52,7 @@ class QueryManager(object):
     def execute_query(self, payload):
         conn, cur = self.db_connect()
 
+        print(payload['data'])
         items = parse_items(payload["data"])
         generate_queries(items)
         return fetch_from_db(cur, items)
@@ -76,20 +77,23 @@ class Range:
     def get_query(self):
         return self.query
 
+    def has_value(self, value):
+        return value.strip() != ""
+
     def __init__(self, start, end, temporalStartRange, temporalEndRange, duration, location, spatialRange):
         global date
         global previousEndDate
 
         self.fullDate, self.castTime = utils.is_full_date(date)
 
-        if start != "--:--":
+        if self.has_value(start):
             self.start = utils.join_date_time(date, start)
             self.startSign = utils.get_sign(start)
         else:
             self.start = None
             self.startSign = None
 
-        if end != "--:--":
+        if self.has_value(end):
             self.end = utils.join_date_time(date, end)
             self.endSign = utils.get_sign(end)
         else:
@@ -101,31 +105,31 @@ class Range:
         if(self.end is not None and utils.get_all_but_sign(end) < previousEndDate and date != "--/--/----"):
             self.end += datetime.timedelta(days=1)
 
-        if temporalStartRange != "0min": #stored as half
+        if self.has_value(temporalStartRange): #stored as half
             self.temporalStartRange = utils.fuzzy_to_sql(temporalStartRange)
         else:
             self.temporalStartRange = None
 
-        if temporalEndRange != "0min": #stored as half
+        if self.has_value(temporalEndRange): #stored as half
             self.temporalEndRange = utils.fuzzy_to_sql(temporalEndRange)
         else:
             self.temporalEndRange = None
 
-        if duration != "duration":
+        if self.has_value(duration):
             self.duration = utils.duration_to_sql(duration)
             self.durationSign = utils.get_sign(duration)
         else:
             self.duration = None
             self.durationSign = None
 
-        if spatialRange != "0m":
+        if self.has_value(spatialRange):
             self.spatialRange = utils.spatial_range_to_meters(spatialRange)
             self.spatialSign = utils.get_sign(spatialRange)
         else:
             self.spatialRange = None
             self.spatialSign = ""
 
-        if location != "local":
+        if self.has_value(location):
             if utils.is_coordinates(location):
                 self.locationCoords = utils.switch_coordinates(location)
                 self.location = None
@@ -282,20 +286,23 @@ class Interval:
     def get_query(self):
         return self.query
 
+    def has_value(self, value):
+        return value.strip() != ""
+
     def __init__(self, start, end, temporalStartRange, temporalEndRange, duration, route):
         global date
         global previousEndDate
 
         self.fullDate, self.castTime = utils.is_full_date(date)
 
-        if start != "--:--":
+        if self.has_value(start):
             self.start = utils.join_date_time(date, start)
             self.startSign = utils.get_sign(start)
         else:
             self.start = None
             self.startSign = None
 
-        if end != "--:--":
+        if self.has_value(end):
             self.end = utils.join_date_time(date, end)
             self.endSign = utils.get_sign(end)
         else:
@@ -307,24 +314,24 @@ class Interval:
         if(self.end is not None and utils.get_all_but_sign(end) < previousEndDate):
             self.end += datetime.timedelta(days=1)
 
-        if temporalStartRange != "0min": #stored as half
+        if self.has_value(temporalStartRange): #stored as half
             self.temporalStartRange = utils.fuzzy_to_sql(temporalStartRange)
         else:
             self.temporalStartRange = None
 
-        if temporalEndRange != "0min": #stored as half
+        if self.has_value(temporalEndRange): #stored as half
             self.temporalEndRange = utils.fuzzy_to_sql(temporalEndRange)
         else:
             self.temporalEndRange = None
 
-        if duration != "duration":
+        if self.has_value(duration):
             self.duration = utils.duration_to_sql(duration)
             self.durationSign = utils.get_sign(duration)
         else:
             self.duration = None
             self.durationSign = None
 
-        if route != "route" and utils.is_coordinates(route):
+        if self.has_value(route) and utils.is_coordinates(route):
             self.route = utils.switch_coordinates(route)
         else:
             self.route = None
@@ -471,11 +478,11 @@ def fetch_from_db(cur, items):
 
 
     try:
-        print(("started query ", datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]))
+        print("-------started query------- ")
         print(template)
         cur.execute(template)
         temp = cur.fetchall()
-        print(("ended query ", datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]))
+        print("-------ended query-------")
 
         for result in temp:
             for i in range(0, size*4, 4):
@@ -533,10 +540,6 @@ def fetch_from_db(cur, items):
                 else:
                     temp = ResultRange(item[2], item[0], item[1], item[3], None)
             end.append(temp)
-
-    print("results", to_show)
-    print("end", end)
-    print("segments", segments)
     
     #TODO Jsonify Result Classes 
     # return {"result": end, "segments": segments}
@@ -557,7 +560,7 @@ def parse_items(obj):
     next(iterobj)
 
     for item in iterobj:
-        if item.get("spatialRange"): #its a range
+        if item.get("spatialRange") != None: #its a range
             global previousEndDate
             if len(items) == 0:
                 previousEndDate = utils.get_all_but_sign(item["start"])

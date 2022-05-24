@@ -15,20 +15,6 @@ CONFIG = {
         'user': None,
         'pass': None
     },
-    "life_converter": {
-        "google_maps_api_key": "",
-        "tom_tom_api_key": "",
-        "bounds": { # represents the corners of the bounds where random locations will be generated
-            "point1": {
-                "lat": 38.746898,
-                "lng": -9.157293
-            },
-            "point2": {
-                "lat": 38.713286,
-                "lng": -9.125020
-            }
-        }
-    },
     'default_timezone': 0,
     'life_annotations': 'all', # all (for stays + trips), stays, trips
     'smoothing': {
