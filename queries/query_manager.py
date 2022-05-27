@@ -359,7 +359,7 @@ class Interval:
         with_chunk = f" {table_name} AS ( " \
                         "SELECT (DATE_PART('day', end_date - start_date) * 24 + " \
                         " DATE_PART('hour', end_date - start_date)) * 60 +" \
-                        " DATE_PART('minute', end_date - start_date) AS duration FROM stays) "
+                        " DATE_PART('minute', end_date - start_date) AS duration, trip_id FROM trips) "
         where_chunk = f" {table_name}.duration {self.durationSign} '{self.duration}' "
 
         return (table_name, with_chunk, where_chunk)
@@ -394,6 +394,7 @@ class Interval:
             tables.append(duration_chunks[0])
             with_chunks.append(duration_chunks[1])
             where_chunks.append(duration_chunks[2])
+            where_chunks.append(f" {duration_chunks[0]}.trip_id = trips.trip_id ")
 
         if self.route is not None:
             where_chunks.append(self.query_chunk_route())
@@ -406,7 +407,7 @@ class Interval:
 
 
     def generate_query(self):
-        base_query = " SELECT DISTINCT trip_id, start_date, end_date, points FROM "
+        base_query = " SELECT DISTINCT trips.trip_id, start_date, end_date, points FROM "
         tables, with_chunks, where_chunks = self.query_chunks()
 
         query = ""
