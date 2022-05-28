@@ -53,7 +53,6 @@ class QueryManager(object):
     def execute_query(self, payload):
         conn, cur = self.db_connect()
 
-        print(payload['data'])
         items = parse_items(payload["data"])
         generate_queries(items)
         return fetch_from_db(cur, items, self.debug)

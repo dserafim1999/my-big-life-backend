@@ -459,7 +459,7 @@ def update_canonical_trip(cur, can_id, trip, mother_trip_id, debug = False):
         UPDATE canonical_trips
         SET bounds=%s, points=%s
         WHERE canonical_id=%s
-        """, (gis_bounds(trip.bounds()), trip, can_id), debug)
+        """, (gis_bounds(trip.bounds(), debug), trip, can_id))
 
     cur.execute("""
         INSERT INTO canonical_trips_relations (canonical_trip, trip)
