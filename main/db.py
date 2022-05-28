@@ -17,20 +17,20 @@ def adapt_point(point):
     """
     return AsIs("'SRID=%s;POINT(%s %s 0)'" % (4326, point.lon, point.lat))
 
-def to_point(gis_point, time=None):
+def to_point(gis_point, time=None, debug = False):
     """ Creates from raw ppygis representation
 
     Args:
         gis_point
-        timestamp (:obj:`datatime.datetime`, optional): timestamp to use
+        timestamp (:obj:`datatime.datetime`, optional, debug = False): timestamp to use
             Defaults to none (point will have empty timestamp)
     Returns:
         :obj:`tracktotrip.Point`
     """
     gis_point = ppygis3.Geometry.read_ewkb(gis_point)
-    return Point(gis_point.y, gis_point.x, time)
+    return Point(gis_point.y, gis_point.x, time, debug)
 
-def to_segment(gis_points, timestamps=None):
+def to_segment(gis_points, timestamps=None, debug = False):
     """ Creates from raw ppygis representation
 
     Args:
@@ -44,17 +44,17 @@ def to_segment(gis_points, timestamps=None):
     result = []
     
     if type(gis_geometry) is ppygis3.Point:
-        result.append(Point(gis_geometry.y, gis_geometry.x, timestamps))
+        result.append(Point(gis_geometry.y, gis_geometry.x, timestamps, debug))
     else:
         gis_points = gis_geometry.points
 
         for i, point in enumerate(gis_points):
             tmstmp = timestamps[i] if timestamps is not None else None
-            result.append(Point(point.y, point.x, tmstmp))
+            result.append(Point(point.y, point.x, tmstmp, debug))
 
-    return Segment(result)
+    return Segment(result, debug)
 
-def adapt_segment(segment):
+def adapt_segment(segment, debug = False):
     """ Adapts a `tracktotrip.Segment` to use with `psycopg` methods
 
     Args:
@@ -73,7 +73,7 @@ def adapt_segment(segment):
 register_adapter(Point, adapt_point)
 register_adapter(Segment, adapt_segment)
 
-def span_date_to_datetime(date, minutes):
+def span_date_to_datetime(date, minutes, debug = False):
     """ Converts date string and minutes to datetime
 
     Args:
@@ -86,7 +86,7 @@ def span_date_to_datetime(date, minutes):
     str_date = "%s %02d%02d" % (date, minutes/60, minutes%60)
     return datetime.datetime.strptime(str_date, date_format)
 
-def get_day_from_life(life, track):
+def get_day_from_life(life, track, debug = False):
     track_time = track.segments[0].points[0].time
     track_day = "%d_%d_%d" % (track_time.year, track_time.month, track_time.day)
     for day in life.days:
@@ -94,15 +94,15 @@ def get_day_from_life(life, track):
             return day
     return None
 
-def life_date(point):
+def life_date(point, debug = False):
     date = point.time.date()
     return "%d_%02d_%02d" % (date.year, date.month, date.day)
 
-def life_time(point):
+def life_time(point, debug = False):
     time = point.time.time()
     return "%02d%02d" % (time.hour, time.minute)
 
-def load_from_segments_annotated(cur, track, life_content, max_distance, min_samples, insert_locs = True):
+def load_from_segments_annotated(cur, track, life_content, max_distance, min_samples, insert_locs = True, debug = False):
     """ Uses a LIFE formated string to populate the database
 
     Args:
@@ -120,15 +120,16 @@ def load_from_segments_annotated(cur, track, life_content, max_distance, min_sam
 
     def in_loc(points, i):
         point = points[i]
-        print(('in_loc', i, point.lat, point.lon))
-        location = life.where_when(life_date(point), life_time(point))
-        print(('location', location))
+        location = life.where_when(life_date(point, debug), life_time(point, debug))
+        if (debug):
+            print(('in_loc', i, point.lat, point.lon))
+            print(('location', location))
         if location is not None:
             if isinstance(location, str):
-                insert_location(cur, location, point, max_distance, min_samples)
+                insert_location(cur, location, point, max_distance, min_samples, debug)
             else:
                 for loc in location:
-                    insert_location(cur, loc, point, max_distance, min_samples)
+                    insert_location(cur, loc, point, max_distance, min_samples, debug)
 
     if insert_locs:
         for segment in track.segments:
@@ -141,18 +142,18 @@ def load_from_segments_annotated(cur, track, life_content, max_distance, min_sam
     for day in life.days:
         date = day.date
         for span in day.spans:
-            start = span_date_to_datetime(date, span.start)
-            end = span_date_to_datetime(date, span.end)
+            start = span_date_to_datetime(date, span.start, debug)
+            end = span_date_to_datetime(date, span.end, debug)
 
             if isinstance(span.place, str):
-                insert_stay(cur, span.place, start, end)
+                insert_stay(cur, span.place, start, end, debug)
 
     # Insert canonical places
     for place, (lat, lon) in list(life.coordinates.items()):
-        insert_location(cur, place, Point(lat, lon, None), max_distance, min_samples)
+        insert_location(cur, place, Point(lat, lon, None, debug), max_distance, min_samples, debug)
 
 
-def load_from_life(cur, content, max_distance, min_samples):
+def load_from_life(cur, content, max_distance, min_samples, debug = False):
     """ Uses a LIFE formated string to populate the database
 
     Args:
@@ -168,17 +169,17 @@ def load_from_life(cur, content, max_distance, min_samples):
 
     # Insert canonical places
     for place, (lat, lon) in list(life.coordinates.items()):
-        insert_location(cur, place, Point(lat, lon, None), max_distance, min_samples)
+        insert_location(cur, place, Point(lat, lon, None, debug), max_distance, min_samples, debug)
 
     # Insert stays
     for day in life.days:
         date = day.date
         for span in day.spans:
-            start = span_date_to_datetime(date, span.start)
-            end = span_date_to_datetime(date, span.end)
+            start = span_date_to_datetime(date, span.start, debug)
+            end = span_date_to_datetime(date, span.end, debug)
 
             if isinstance(span.place, str):
-                insert_stay(cur, span.place, start, end)
+                insert_stay(cur, span.place, start, end, debug)
 
 
 def connect_db(host, name, user, port, password):
@@ -222,7 +223,7 @@ def dispose(conn, cur):
         cur.close()
 
 
-def gis_bounds(bound):
+def gis_bounds(bound, debug = False):
     """ Converts bounds to its representation
     """
 
@@ -235,7 +236,7 @@ def gis_bounds(bound):
 
     return AsIs("'POLYGON((%s))'" % (points))
 
-def insert_location(cur, label, point, max_distance, min_samples):
+def insert_location(cur, label, point, max_distance, min_samples, debug = False):
     """ Inserts a location into the database
 
     Args:
@@ -248,7 +249,8 @@ def insert_location(cur, label, point, max_distance, min_samples):
             `tracktotrip.location.update_location_centroid`
     """
 
-    print('Inserting location %s, %f, %f' % (label, point.lat, point.lon))
+    if (debug):
+        print('Inserting location %s, %f, %f' % (label, point.lat, point.lon))
 
     cur.execute("""
             SELECT location_id, label, centroid, point_cluster
@@ -259,33 +261,30 @@ def insert_location(cur, label, point, max_distance, min_samples):
     if cur.rowcount > 0:
         # Updates current location set of points and centroid
         location_id, _, centroid, point_cluster = cur.fetchone()
-        centroid = to_point(centroid)
-        point_cluster = to_segment(point_cluster).points
+        centroid = to_point(centroid, debug=debug)
+        point_cluster = to_segment(point_cluster, debug=debug).points
 
-        # print 'Previous point %s, cluster %s' % (point, [p.to_json() for p in point_cluster])
         centroid, point_cluster = update_location_centroid(
             point,
             point_cluster,
             max_distance,
-            min_samples
+            min_samples,
+            debug
         )
-        # print 'Then point %s, cluster %s' % (point, [p.to_json() for p in point_cluster])
-        # print 'centroid: %s' % centroid.to_json()
 
         cur.execute("""
                 UPDATE locations
                 SET centroid=%s, point_cluster=%s
                 WHERE location_id=%s
-                """, (centroid, Segment(point_cluster), location_id))
+                """, (centroid, Segment(point_cluster, debug), location_id))
     else:
-        # print 'New location'
         # Creates new location
         cur.execute("""
                 INSERT INTO locations (label, centroid, point_cluster)
                 VALUES (%s, %s, %s)
-                """, (label, point, Segment([point, point])))
+                """, (label, point, Segment([point, point], debug)))
 
-def insert_transportation_mode(cur, tmode, trip_id, segment):
+def insert_transportation_mode(cur, tmode, trip_id, segment, debug = False):
     """ Inserts transportation mode in the database
 
     Args:
@@ -308,10 +307,10 @@ def insert_transportation_mode(cur, tmode, trip_id, segment):
                 segment.points[to_index].time,
                 from_index,
                 to_index,
-                gis_bounds(segment.bounds(from_index, to_index))
+                gis_bounds(segment.bounds(from_index, to_index), debug)
             ))
 
-def insert_stay(cur, label, start_date, end_date):
+def insert_stay(cur, label, start_date, end_date, debug = False):
     """ Inserts stay in the database
 
     Args:
@@ -326,7 +325,7 @@ def insert_stay(cur, label, start_date, end_date):
         VALUES (%s, %s, %s)
         """, (label, start_date, end_date))
 
-def insert_segment(cur, segment, max_distance, min_samples):
+def insert_segment(cur, segment, max_distance, min_samples, debug = False):
     """ Inserts segment in the database
 
     Args:
@@ -354,7 +353,7 @@ def insert_segment(cur, segment, max_distance, min_samples):
             """, (
                 segment.points[0].time.replace(second=0, microsecond=0),
                 segment.points[-1].time.replace(second=0, microsecond=0),
-                gis_bounds(segment.bounds()),
+                gis_bounds(segment.bounds(), debug),
                 segment,
                 tstamps
             ))
@@ -362,11 +361,11 @@ def insert_segment(cur, segment, max_distance, min_samples):
     trip_id = trip_id[0]
 
     for tmode in segment.transportation_modes:
-        insert_transportation_mode(cur, tmode, trip_id, segment)
+        insert_transportation_mode(cur, tmode, trip_id, segment, debug)
 
     return trip_id
 
-def match_canonical_trip(cur, trip, distance):
+def match_canonical_trip(cur, trip, distance, debug = False):
     """ Queries database for canonical trips with bounding boxes that intersect the bounding
         box of the given trip
 
@@ -381,12 +380,12 @@ def match_canonical_trip(cur, trip, distance):
 
     can_trips = []
     for (canonical_id, points) in results:
-        segment = to_segment(points)
+        segment = to_segment(points, debug=debug)
         can_trips.append((canonical_id, segment))
 
     return can_trips
 
-def match_canonical_trip_bounds(cur, bounds):
+def match_canonical_trip_bounds(cur, bounds, debug = False):
     """ Queries database for canonical trips with bounding boxes that intersect the bounding
         box of the given trip
 
@@ -409,12 +408,12 @@ def match_canonical_trip_bounds(cur, bounds):
 
     can_trips = []
     for (canonical_id, points, count) in results:
-        segment = to_segment(points)
+        segment = to_segment(points, debug=debug)
         can_trips.append((canonical_id, segment, count))
 
     return can_trips
 
-def insert_canonical_trip(cur, can_trip, mother_trip_id):
+def insert_canonical_trip(cur, can_trip, mother_trip_id, debug = False):
     """ Inserts a new canonical trip into the database
 
     It also creates a relation between the trip that originated
@@ -433,8 +432,8 @@ def insert_canonical_trip(cur, can_trip, mother_trip_id):
         VALUES (%s, %s)
         RETURNING canonical_id
         """, (
-            gis_bounds(can_trip.bounds()),
-            Segment(can_trip.points)
+            gis_bounds(can_trip.bounds(), debug),
+            Segment(can_trip.points, debug)
         ))
     result = cur.fetchone()
     c_trip_id = result[0]
@@ -446,7 +445,7 @@ def insert_canonical_trip(cur, can_trip, mother_trip_id):
 
     return c_trip_id
 
-def update_canonical_trip(cur, can_id, trip, mother_trip_id):
+def update_canonical_trip(cur, can_id, trip, mother_trip_id, debug = False):
     """ Updates a canonical trip
 
     Args:
@@ -460,14 +459,14 @@ def update_canonical_trip(cur, can_id, trip, mother_trip_id):
         UPDATE canonical_trips
         SET bounds=%s, points=%s
         WHERE canonical_id=%s
-        """, (gis_bounds(trip.bounds()), trip, can_id))
+        """, (gis_bounds(trip.bounds()), trip, can_id), debug)
 
     cur.execute("""
         INSERT INTO canonical_trips_relations (canonical_trip, trip)
         VALUES (%s, %s)
         """, (can_id, mother_trip_id))
 
-def query_locations(cur, lat, lon, radius):
+def query_locations(cur, lat, lon, radius, debug = False):
     """ Queries the database for location around a point location
 
     Args:
@@ -479,27 +478,21 @@ def query_locations(cur, lat, lon, radius):
         :obj:`list` of (str, ?, ?): List of tuples with the label, the centroid, and the point
             cluster of the location. Centroid and point cluster need to be converted
     """
-    # print '%f, %f, %f' % (lat, lon, radius)
     cur.execute("""
         SELECT label, centroid, point_cluster
         FROM locations
         WHERE ST_DWithin(centroid, %s, %s)
         ORDER BY ST_Distance(centroid, %s)
-        """, (Point(lat, lon, None), radius * 4, Point(lat, lon, None)))
-    # cur.execute("""
-    #     SELECT label, centroid, point_cluster
-    #     FROM locations
-    #     WHERE ST_SetSRID(ST_Point(-71.1043443253471, 42.3150676015829),4326)::geography
-    #     WHERE ST_Distance_Sphere(centroid, ST_GeomFromText('POINT(%s %s)', 4326)) >= %s
-    #     """, (lat, lon, radius))
+        """, (Point(lat, lon, None, debug), radius * 4, Point(lat, lon, None, debug)))
+        
     results = cur.fetchall()
     a = [
-        (label, to_point(centroid), to_segment(cluster)) for (label, centroid, cluster) in results
+        (label, to_point(centroid, debug=debug), to_segment(cluster, debug=debug)) for (label, centroid, cluster) in results
     ]
-    print(a)
+
     return a
 
-def get_canonical_trips(cur):
+def get_canonical_trips(cur, debug = False):
     """ Gets canonical trips
 
     Args:
@@ -510,9 +503,9 @@ def get_canonical_trips(cur):
     """
     cur.execute("SELECT canonical_id, points FROM canonical_trips")
     trips = cur.fetchall()
-    return [{'id': t[0], 'points': to_segment(t[1])} for t in trips]
+    return [{'id': t[0], 'points': to_segment(t[1], debug=debug)} for t in trips]
 
-def get_canonical_locations(cur):
+def get_canonical_locations(cur, debug = False):
     """ Gets canonical trips
 
     Args:
@@ -523,9 +516,9 @@ def get_canonical_locations(cur):
     """
     cur.execute("SELECT label, point_cluster FROM locations")
     locations = cur.fetchall()
-    return [{'label': t[0], 'points': to_segment(t[1])} for t in locations]
+    return [{'label': t[0], 'points': to_segment(t[1], debug=debug)} for t in locations]
 
-def get_all_trips(cur):
+def get_all_trips(cur, debug = False):
     """ Gets trips in db
 
     Args:
@@ -536,7 +529,7 @@ def get_all_trips(cur):
     """
     cur.execute("SELECT trip_id, points, timestamps FROM trips")
     trips = cur.fetchall()
-    return [{'id': t[0], 'points': to_segment(t[1], t[2])} for t in trips]
+    return [{'id': t[0], 'points': to_segment(t[1], t[2], debug)} for t in trips]
 
-def execute_query(cur, query):
+def execute_query(cur, query, debug = False):
     cur.execute(query)

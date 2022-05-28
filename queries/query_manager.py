@@ -23,8 +23,9 @@ from main.default_config import CONFIG
 class QueryManager(object):
     """ 
     """
-    def __init__(self, config_file):
+    def __init__(self, config_file, debug):
         self.config = dict(CONFIG)
+        self.debug = debug
 
         if config_file and isfile(expanduser(config_file)):
             with open(expanduser(config_file), 'r') as config_file:
@@ -55,7 +56,7 @@ class QueryManager(object):
         print(payload['data'])
         items = parse_items(payload["data"])
         generate_queries(items)
-        return fetch_from_db(cur, items)
+        return fetch_from_db(cur, items, self.debug)
 
 class Range:
     start = ""
@@ -443,7 +444,7 @@ class Interval:
 
 
 
-def fetch_from_db(cur, items):
+def fetch_from_db(cur, items, debug = False):
     results = []
     all = []
     segments = []
@@ -479,18 +480,20 @@ def fetch_from_db(cur, items):
 
 
     try:
-        print("-------started query------- ")
-        print(template)
+        if debug:
+            print("-------query------- ")
+            print(template)
+            print("--------------")
+        
         cur.execute(template)
         temp = cur.fetchall()
-        print("-------ended query-------")
 
         for result in temp:
             for i in range(0, size*4, 4):
                 id = result[i]
                 start_date = result[i+1]
                 end_date = result[i+2]
-                points = db.to_segment(result[i+3]).to_json()
+                points = db.to_segment(result[i+3], debug=debug).to_json()
                 points['id'] = id
 
                 if size == 1: # only stay's location

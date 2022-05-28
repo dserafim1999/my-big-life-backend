@@ -31,9 +31,9 @@ args = parser.parse_args()
 app = Flask(__name__)
 # socketio = SocketIO(app)
 
-manager = MainManager(args.config)
-processing_manager = ProcessingManager(args.config)
-query_manager = QueryManager(args.config)
+manager = MainManager(args.config, args.debug)
+processing_manager = ProcessingManager(args.config, args.debug)
+query_manager = QueryManager(args.config, args.debug)
 
 
 # ROUTES
@@ -108,8 +108,8 @@ def complete_trip():
         :obj:`flask.response`
     """
     payload = request.get_json(force=True)
-    from_point = Point.from_json(payload['from'])
-    to_point = Point.from_json(payload['to'])
+    from_point = Point.from_json(payload['from'], args.debug)
+    to_point = Point.from_json(payload['to'], args.debug)
     return set_headers(jsonify(processing_manager.complete_trip(from_point, to_point)))
 
 @app.route('/process/changeDay', methods=['POST'])

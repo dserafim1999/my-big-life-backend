@@ -15,8 +15,9 @@ class MainManager(object):
         
     """
 
-    def __init__(self, config_file):
+    def __init__(self, config_file, debug):
         self.config = dict(CONFIG)
+        self.debug = debug
 
         if config_file and isfile(expanduser(config_file)):
             with open(expanduser(config_file), 'r') as config_file:
@@ -45,7 +46,7 @@ class MainManager(object):
         conn, cur = self.db_connect()
         result = []
         if conn and cur:
-            result = db.get_all_trips(cur)
+            result = db.get_all_trips(cur, self.debug)
         for val in result:
             val['points'] = val['points'].to_json()
             val['points']['id'] = val['id']

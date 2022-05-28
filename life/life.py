@@ -95,7 +95,7 @@ def yesterday(last_date):
 
 class Life:
     """A set of days, encompasing a life, plus meta-commands"""
-    def __init__(self, filename=None, default_timezone="UTC"):
+    def __init__(self, filename=None, default_timezone="UTC", debug=False):
         self.days=[]             # the list of days
         self.categories={}       # the place categories
         self.subplaces = {}      # the subplaces
@@ -105,6 +105,7 @@ class Life:
         self.coordinates={}        # known locations for places (lat, lon)
         self.default_timezone=default_timezone  # the default timezone
         self.basepath=""
+        self.debug=debug
         
         if filename:
             self.from_file(filename)
@@ -207,7 +208,8 @@ class Life:
                     if type(self.curtimezone) == list:
                         self.curtimezone = self.curtimezone[1]
             except ArithmeticError:
-                print("Failed: ",line)
+                if(self.debug):
+                    print("Failed: ",line)
         if self.curday:
             self.days.append(self.curday)
         if not recursive:

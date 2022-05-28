@@ -19,13 +19,13 @@ from utils import update_dict
 
 from main.default_config import CONFIG
 
-def inside(to_find, modes):
+def inside(to_find, modes, debug = False):
     for elm in to_find:
         if elm.lower() in modes:
             return elm.lower()
     return None
 
-def gte_time(small, big):
+def gte_time(small, big, debug = False):
     if small.hour < big.hour:
         return True
     elif small.hour == big.hour and small.minute <= big.minute:
@@ -33,20 +33,20 @@ def gte_time(small, big):
     else:
         return False
 
-def is_time_between(lower, time, upper):
-    return gte_time(lower, time) and gte_time(time, upper)
+def is_time_between(lower, time, upper, debug):
+    return gte_time(lower, time, debug) and gte_time(time, upper, debug)
 
-def find_index_point(track, time):
+def find_index_point(track, time, debug = False):
     for j, segment in enumerate(track.segments):
         i = 0
-        for p_a, p_b in pairwise(segment.points):
-            if is_time_between(p_a.time, time, p_b.time):
+        for p_a, p_b in pairwise(segment.points, debug):
+            if is_time_between(p_a.time, time, p_b.time, debug):
                 return (j, i)
             i = i + 1
     return None, None
 
-def apply_transportation_mode_to(track, life_content, transportation_modes):
-    life = Life()
+def apply_transportation_mode_to(track, life_content, transportation_modes, debug = False):
+    life = Life(debug=debug)
     life.from_string(life_content.split('\n'))
 
     for segment in track.segments:
@@ -54,10 +54,10 @@ def apply_transportation_mode_to(track, life_content, transportation_modes):
 
     for day in life.days:
         for span in day.spans:
-            has = inside(span.tags, transportation_modes)
+            has = inside(span.tags, transportation_modes, debug)
             if has:
-                start_time = db.span_date_to_datetime(span.day, span.start)
-                end_time = db.span_date_to_datetime(span.day, span.end)
+                start_time = db.span_date_to_datetime(span.day, span.start, debug)
+                end_time = db.span_date_to_datetime(span.day, span.end, debug)
 
                 start_segment, start_index = find_index_point(track, start_time)
                 end_segment, end_index = find_index_point(track, end_time)
@@ -84,7 +84,7 @@ def save_to_file(path, content, mode="w"):
         dest_file.write(content)
 
 TIME_RX = re.compile(r'\<time\>([^\<]+)\<\/time\>')
-def predict_start_date(filename):
+def predict_start_date(filename, debug = False):
     """ Predicts the start date of a GPX file
 
     Reads the first valid date, by matching TIME_RX regular expression
@@ -96,9 +96,9 @@ def predict_start_date(filename):
     """
     with open(filename, 'r') as opened_file:
         result = TIME_RX.search(opened_file.read())
-        return tt.utils.isostr_to_datetime(result.group(1))
+        return tt.utils.isostr_to_datetime(result.group(1), debug)
 
-def file_details(base_path, filepath):
+def file_details(base_path, filepath, debug = False):
     """ Returns file details
 
     Example:
@@ -120,7 +120,7 @@ def file_details(base_path, filepath):
     complete_path = join(base_path, filepath)
     (_, _, _, _, _, _, size, _, _, _) = stat(complete_path)
 
-    date = predict_start_date(complete_path)
+    date = predict_start_date(complete_path, debug)
     return {
         'name': filepath,
         'path': complete_path,
@@ -178,8 +178,9 @@ class ProcessingManager(object):
             folder
     """
 
-    def __init__(self, config_file):
+    def __init__(self, config_file, debug):
         self.config = dict(CONFIG)
+        self.debug = debug
 
         if config_file and isfile(expanduser(config_file)):
             with open(expanduser(config_file), 'r') as config_file:
@@ -190,7 +191,7 @@ class ProcessingManager(object):
         if clf_path:
             self.clf = Classifier.load_from_file(open(expanduser(clf_path), 'r'))
         else:
-            self.clf = Classifier()
+            self.clf = Classifier(debug=self.debug)
 
         self.is_bulk_processing = False
         self.queue = {}
@@ -198,6 +199,7 @@ class ProcessingManager(object):
         self.current_step = None
         self.history = []
         self.current_day = None
+        self.debug = debug
         self.reset()
 
     def list_gpxs(self):
@@ -261,7 +263,7 @@ class ProcessingManager(object):
         if day in list(self.queue.keys()):
             key_to_use = day
             gpxs_to_use = self.queue[key_to_use]
-            gpxs_to_use = [tt.Track.from_gpx(gpx['path'])[0] for gpx in gpxs_to_use]
+            gpxs_to_use = [tt.Track.from_gpx(gpx['path'], self.debug)[0] for gpx in gpxs_to_use]
 
             self.current_day = key_to_use
 
@@ -269,7 +271,7 @@ class ProcessingManager(object):
             for gpx in gpxs_to_use:
                 segs.extend(gpx.segments)
 
-            track = tt.Track('', segments=segs)
+            track = tt.Track('', segments=segs, debug=self.debug)
             track.name = track.generate_name(self.config['trip_name_format'])
 
             self.history = [track]
@@ -350,7 +352,7 @@ class ProcessingManager(object):
             life = ''
 
         if len(changes) > 0:
-            track = tt.Track.from_json(data['track'])
+            track = tt.Track.from_json(data['track'], self.debug)
             self.history[-1] = track
         track = self.current_track().copy()
 
@@ -374,8 +376,10 @@ class ProcessingManager(object):
     def bulk_process(self):
         """ Starts bulk processing all GPXs queued
         """
+        processed = 1
+        total_num_days = len(list(self.queue.values()))
         self.is_bulk_processing = True
-        lifes = [open(expanduser(join(self.config['input_path'], f)), 'r') for f in self.life_queue]
+        lifes = [open(expanduser(join(self.config['input_path'], f)), 'r').read() for f in self.life_queue]
         lifes = '\n'.join(lifes)
         while len(list(self.queue.values())) > 0:
             # preview -> adjust
@@ -384,6 +388,9 @@ class ProcessingManager(object):
             self.process({'changes': [], 'LIFE': ''})
             # annotate -> store
             self.process({'changes': [], 'LIFE': lifes})
+
+            print(f"{processed}/{total_num_days} days processed")
+            processed += 1
         self.is_bulk_processing = False
 
     def preview_to_adjust(self, track):
@@ -443,7 +450,7 @@ class ProcessingManager(object):
                 :obj:`list` of (str, ?, ?)
             """
             if cur:
-                return db.query_locations(cur, point.lat, point.lon, radius)
+                return db.query_locations(cur, point.lat, point.lon, radius, self.debug)
             else:
                 return []
 
@@ -502,7 +509,7 @@ class ProcessingManager(object):
             save_to_file(join(expanduser(self.config['output_path']), track.name), track.to_gpx())
 
         # if not self.is_bulk_processing:
-        #     apply_transportation_mode_to(track, life, set(self.clf.labels.classes_))
+        #     apply_transportation_mode_to(track, life, set(self.clf.labels.classes_), self.debug)
         #     learn_transportation_mode(track, self.clf)
         #     with open(self.config['transportation']['classifier_path'], 'w') as classifier_file:
         #         self.clf.save_to_file(classifier_file)
@@ -528,7 +535,8 @@ class ProcessingManager(object):
                 life,
                 self.config['location']['max_distance'],
                 self.config['location']['min_samples'],
-                True
+                True,
+                self.debug
             )
 
             def insert_can_trip(can_trip, mother_trip_id):
@@ -543,7 +551,7 @@ class ProcessingManager(object):
                 Returns:
                     int: Canonical trip id
                 """
-                return db.insert_canonical_trip(cur, can_trip, mother_trip_id)
+                return db.insert_canonical_trip(cur, can_trip, mother_trip_id, self.debug)
 
             def update_can_trip(can_id, trip, mother_trip_id):
                 """ Updates a cannonical trip on the database
@@ -556,7 +564,7 @@ class ProcessingManager(object):
                     mother_trip_id (int): Id of the trip that originated the canonical
                         representation
                 """
-                db.update_canonical_trip(cur, can_id, trip, mother_trip_id)
+                db.update_canonical_trip(cur, can_id, trip, mother_trip_id, self.debug)
 
             trips_ids = []
             for trip in track.segments:
@@ -565,14 +573,17 @@ class ProcessingManager(object):
                     cur,
                     trip,
                     self.config['location']['max_distance'],
-                    self.config['location']['min_samples']
+                    self.config['location']['min_samples'],
+                    self.debug
                 )
                 trips_ids.append(trip_id)
 
-                d_latlon = estimate_meters_to_deg(self.config['location']['max_distance'])
+                d_latlon = estimate_meters_to_deg(self.config['location']['max_distance'], debug=self.debug)
                 # Build/learn canonical trip
-                canonical_trips = db.match_canonical_trip(cur, trip, d_latlon)
-                print("canonical_trips # = %d" % len(canonical_trips))
+                canonical_trips = db.match_canonical_trip(cur, trip, d_latlon, self.debug)
+
+                if self.debug:
+                    print("canonical_trips # = %d" % len(canonical_trips))
 
                 learn_trip(
                     trip,
@@ -581,7 +592,8 @@ class ProcessingManager(object):
                     insert_can_trip,
                     update_can_trip,
                     self.config['simplification']['eps'],
-                    d_latlon
+                    d_latlon,
+                    debug=self.debug
                 )
 
             # db.insertStays(cur, trip, trips_ids, life)
@@ -648,7 +660,7 @@ class ProcessingManager(object):
         Returns:
             :obj:`tracktotrip.Track`
         """
-        distance = estimate_meters_to_deg(self.config['location']['max_distance']) * 2
+        distance = estimate_meters_to_deg(self.config['location']['max_distance'], debug=self.debug) * 2
         b_box = (
             min(from_point.lat, to_point.lat) - distance,
             min(from_point.lon, to_point.lon) - distance,
@@ -660,11 +672,12 @@ class ProcessingManager(object):
         conn, cur = self.db_connect()
         if conn and cur:
             # get matching canonical trips, based on bounding box
-            canonical_trips = db.match_canonical_trip_bounds(cur, b_box)
-            print((len(canonical_trips)))
+            canonical_trips = db.match_canonical_trip_bounds(cur, b_box, self.debug)
             db.dispose(conn, cur)
+            if self.debug:
+                print((len(canonical_trips)))
 
-        return complete_trip(canonical_trips, from_point, to_point, self.config['location']['max_distance'])
+        return complete_trip(canonical_trips, from_point, to_point, self.config['location']['max_distance'], debug=self.debug)
 
     def load_life(self, content):
         """ Adds LIFE content to the database
@@ -679,10 +692,11 @@ class ProcessingManager(object):
         if conn and cur:
             db.load_from_segments_annotated(
                 cur,
-                tt.Track('', []),
+                tt.Track('', [], debug=self.debug),
                 str(content, 'utf-8'),
                 self.config['location']['max_distance'],
-                self.config['location']['min_samples']
+                self.config['location']['min_samples'],
+                debug=self.debug
             )
 
         db.dispose(conn, cur)
@@ -708,7 +722,7 @@ class ProcessingManager(object):
                 :obj:`list` of (str, ?, ?)
             """
             if cur:
-                return db.query_locations(cur, point.lat, point.lon, radius)
+                return db.query_locations(cur, point.lat, point.lon, radius, self.debug)
             else:
                 return []
 
@@ -719,7 +733,8 @@ class ProcessingManager(object):
             google_key=c_loc['google_key'],
             foursquare_client_id=c_loc['foursquare_client_id'],
             foursquare_client_secret=c_loc['foursquare_client_secret'],
-            limit=c_loc['limit']
+            limit=c_loc['limit'],
+            debug=self.debug
         )
         db.dispose(conn, cur)
 
@@ -729,7 +744,7 @@ class ProcessingManager(object):
         conn, cur = self.db_connect()
         result = []
         if conn and cur:
-            result = db.get_canonical_trips(cur)
+            result = db.get_canonical_trips(cur, self.debug)
         for val in result:
             val['points'] = val['points'].to_json()
             val['points']['id'] = val['id']
@@ -740,7 +755,7 @@ class ProcessingManager(object):
         conn, cur = self.db_connect()
         result = []
         if conn and cur:
-            result = db.get_canonical_locations(cur)
+            result = db.get_canonical_locations(cur, self.debug)
         for val in result:
             val['points'] = val['points'].to_json()
             val['points']['label'] = val['label']
@@ -748,9 +763,9 @@ class ProcessingManager(object):
         return [r['points'] for r in result]
 
     def get_transportation_suggestions(self, points):
-        segment = tt.Segment(points).compute_metrics()
+        segment = tt.Segment(points, debug=self.debug).compute_metrics()
         points = segment.points
-        modes = classify(self.clf, points, self.config['transportation']['min_time'])
+        modes = classify(self.clf, points, self.config['transportation']['min_time'], debug=self.debug)
         return modes['classification']
 
     def remove_day(self, day):
