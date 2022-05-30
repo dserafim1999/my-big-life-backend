@@ -341,6 +341,9 @@ class ProcessingManager(object):
             :obj:`tracktotrip.Track`
         """
         step = self.current_step
+
+        print("step", step)
+
         if 'changes' in list(data.keys()):
             changes = data['changes']
         else:
@@ -379,13 +382,39 @@ class ProcessingManager(object):
         processed = 1
         total_num_days = len(list(self.queue.values()))
         self.is_bulk_processing = True
+
+        #TODO get life for each day
         lifes = [open(expanduser(join(self.config['input_path'], f)), 'r').read() for f in self.life_queue]
         lifes = '\n'.join(lifes)
+
         while len(list(self.queue.values())) > 0:
             # preview -> adjust
             self.process({'changes': [], 'LIFE': ''})
             # adjust -> annotate
             self.process({'changes': [], 'LIFE': ''})
+            # annotate -> store
+            self.process({'changes': [], 'LIFE': lifes})
+
+            print(f"{processed}/{total_num_days} days processed")
+            processed += 1
+        self.is_bulk_processing = False
+    
+    def raw_bulk_process(self):
+        """ Starts bulk processing all GPXs queued with no preprocessing
+        """
+        processed = 1
+        total_num_days = len(list(self.queue.values()))
+        
+        self.is_bulk_processing = True
+        
+        #TODO get life for each day
+        lifes = [open(expanduser(join(self.config['input_path'], f)), 'r').read() for f in self.life_queue]
+        lifes = '\n'.join(lifes)
+
+
+        while len(list(self.queue.values())) > 0:
+            # skips preprocessing steps
+            self.current_step = Step.annotate 
             # annotate -> store
             self.process({'changes': [], 'LIFE': lifes})
 

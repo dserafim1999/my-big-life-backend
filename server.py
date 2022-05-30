@@ -143,6 +143,15 @@ def bulk_process():
     processing_manager.bulk_process()
     return send_state()
 
+@app.route('/process/rawBulk', methods=['GET'])
+def raw_bulk_process():
+    """Starts bulk processing without preprocessing steps
+    Returns:
+        :obj:`flask.response`
+    """
+    processing_manager.raw_bulk_process()
+    return send_state()
+
 @app.route('/process/loadLIFE', methods=['POST'])
 def load_life():
     """ Loads a life formated string into the database
