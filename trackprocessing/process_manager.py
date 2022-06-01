@@ -96,8 +96,12 @@ def predict_start_date(filename, debug = False):
         :obj:`datetime.datetime`
     """
     with open(filename, 'r') as opened_file:
-        result = TIME_RX.search(opened_file.read())
-        return tt.utils.isostr_to_datetime(result.group(1), debug)
+        result = TIME_RX.findall(opened_file.read())
+        if len(result) > 1:
+            date = result[1]
+        else:
+            date = result[0]
+        return tt.utils.isostr_to_datetime(date, debug)
 
 def file_details(base_path, filepath, debug = False):
     """ Returns file details
