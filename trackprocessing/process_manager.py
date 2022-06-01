@@ -5,6 +5,7 @@ Contains class that orchestrates processing
 import re
 import json
 from os import listdir, stat, rename
+from shutil import copyfile
 from os.path import join, expanduser, isfile
 from collections import OrderedDict
 import tracktotrip as tt
@@ -342,8 +343,6 @@ class ProcessingManager(object):
         """
         step = self.current_step
 
-        print("step", step)
-
         if 'changes' in list(data.keys()):
             changes = data['changes']
         else:
@@ -375,6 +374,61 @@ class ProcessingManager(object):
             self.history.append(result)
 
         return result
+    
+    def raw_process(self, life):
+        """ Stores the track and dequeues another track to be
+        processed.
+
+        Moves the current GPX file from the input path to the
+        output and backup path, creates a LIFE file in the life path
+        and creates a trip entry in the database.
+
+        Args:
+            track (:obj:tracktotrip.Track`)
+            changes (:obj:`list` of :obj:`dict`): Details of, user made, changes
+        """
+
+        track = self.current_track().copy()
+
+        if not track.name or len(track.name) == 0:
+            track.name = track.generate_name(self.config['trip_name_format'])
+
+        
+        # Backup trips and move to output
+        if self.config['backup_path']:
+            for gpx in self.queue[self.current_day]:
+                input_path = gpx['path']
+                backup_path = join(expanduser(self.config['backup_path']), gpx['name'])
+                copyfile(input_path, backup_path)
+
+                if self.config['output_path']:
+                        output_path = join(expanduser(self.config['output_path']), gpx['name'])
+                        rename(input_path, output_path)
+        
+
+        # To LIFE
+        if self.config['life_path'] and life:
+            name = '.'.join(track.name.split('.')[:-1])
+            save_to_file(join(expanduser(self.config['life_path']), name), life)
+
+        conn, cur = self.db_connect()
+
+        if conn and cur:
+            db.load_from_segments_annotated(
+                cur,
+                self.current_track(),
+                life,
+                self.config['location']['max_distance'],
+                self.config['location']['min_samples'],
+                True,
+                self.debug
+            )
+            db.dispose(conn, cur)
+
+        self.next_day()
+
+        return self.current_track()
+
 
     def bulk_process(self):
         """ Starts bulk processing all GPXs queued
@@ -383,20 +437,31 @@ class ProcessingManager(object):
         total_num_days = len(list(self.queue.values()))
         self.is_bulk_processing = True
 
-        #TODO get life for each day
-        lifes = [open(expanduser(join(self.config['input_path'], f)), 'r').read() for f in self.life_queue]
-        lifes = '\n'.join(lifes)
+        all_lifes = [open(expanduser(join(self.config['input_path'], f)), 'r').read() for f in self.life_queue]
+        all_lifes = '\n'.join(all_lifes)
+
+        lifes = Life()
+        lifes.from_string(all_lifes)
 
         while len(list(self.queue.values())) > 0:
+            life = next((day for day in lifes if day.date == self.current_day.replace("-", "_")), "")
             # preview -> adjust
             self.process({'changes': [], 'LIFE': ''})
             # adjust -> annotate
             self.process({'changes': [], 'LIFE': ''})
             # annotate -> store
-            self.process({'changes': [], 'LIFE': lifes})
+            self.process({'changes': [], 'LIFE': str(life)})
 
             print(f"{processed}/{total_num_days} days processed")
             processed += 1
+
+        for life_file in self.life_queue:
+            life_path = join(expanduser(self.config['input_path']), life_file)
+            backup_path = join(expanduser(self.config['backup_path']), life_file)
+            rename(life_path, backup_path)
+
+        self.life_queue = []
+
         self.is_bulk_processing = False
     
     def raw_bulk_process(self):
@@ -408,18 +473,34 @@ class ProcessingManager(object):
         self.is_bulk_processing = True
         
         #TODO get life for each day
-        lifes = [open(expanduser(join(self.config['input_path'], f)), 'r').read() for f in self.life_queue]
-        lifes = '\n'.join(lifes)
+        all_lifes = [open(expanduser(join(self.config['input_path'], f)), 'r').read() for f in self.life_queue]
+        all_lifes = '\n'.join(all_lifes)
 
+        lifes = Life()
+        lifes.from_string(all_lifes)
 
         while len(list(self.queue.values())) > 0:
-            # skips preprocessing steps
-            self.current_step = Step.annotate 
             # annotate -> store
-            self.process({'changes': [], 'LIFE': lifes})
+            life = next((day for day in lifes if day.date == self.current_day.replace("-", "_")), "")
+            self.raw_process(str(life))
 
             print(f"{processed}/{total_num_days} days processed")
             processed += 1
+
+        if self.config['life_path']:
+            if self.config['life_all']:
+                life_all_file = expanduser(self.config['life_all'])
+            else:
+                life_all_file = join(expanduser(self.config['life_path']), 'all.life')
+            save_to_file(life_all_file, "\n\n%s" % lifes, mode='a+')
+
+        for life_file in self.life_queue:
+            life_path = join(expanduser(self.config['input_path']), life_file)
+            backup_path = join(expanduser(self.config['backup_path']), life_file)
+            rename(life_path, backup_path)
+
+        self.life_queue = []
+
         self.is_bulk_processing = False
 
     def preview_to_adjust(self, track):
@@ -643,6 +724,7 @@ class ProcessingManager(object):
             self.current_step = Step.preview
 
         return self.current_track()
+
 
     def current_track(self):
         """ Gets the current trip/track

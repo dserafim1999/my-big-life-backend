@@ -474,18 +474,22 @@ def fetch_from_db(cur, items, debug = False):
                 if id <= size:
                     template += add_template%(items[id-1].get_query(), id, id-1, id, items[id].get_query(), id+1, id, id+1)
                     id += 2
-    elif size ==1:
+    elif size == 1:
         template = items[0].get_query()
+    else:
+        if debug:
+            print("Empty query")
+        return {"result": [], "segments": []}
 
 
     try:
+        cur.execute(template)
+        temp = cur.fetchall()
         if debug:
             print("-------query------- ")
             print(template)
             print("--------------")
         
-        cur.execute(template)
-        temp = cur.fetchall()
 
         for result in temp:
             for i in range(0, size*4, 4):
