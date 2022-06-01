@@ -1,10 +1,5 @@
 # MyBigLife Backend
 
-
-
-## Introduction
-
-
 ## Setup
 
 ### Requirements
@@ -17,7 +12,7 @@ The required Python libraries to run the backend server can be found in the "req
 
 ### TrackToTrip Manual Install
 
-As it stands, TrackToTrip must be installed separately. You can find the source code at "link". Once downloaded, you can install it by running the following command in the project"s directory:
+As it stands, [TrackToTrip](https://github.com/dserafim1999/TrackToTrip/) must be installed separately. Once downloaded, you can install it by running the following command in the project's directory:
 
 ```
  $ python setup.py install
@@ -25,7 +20,7 @@ As it stands, TrackToTrip must be installed separately. You can find the source 
 
 If you are using a virtual environment to install MyBigLife Backend"s requirements, make sure to run the previous command with the virtual environment active.
 
-**NOTE:** TrackToTrip requires Microsoft Visual C++ 14.0. It can be found using the Build Tools for Visual Studio 2022 (here: https://visualstudio.microsoft.com/downloads/?q=build+tools)
+**NOTE:** TrackToTrip requires Microsoft Visual C++ 14.0. It can be found using the [Build Tools for Visual Studio 2022](https://visualstudio.microsoft.com/downloads/?q=build+tools)
 
 
 ## Config
@@ -83,3 +78,13 @@ The server is highly parameterable, use the following command for more options:
 ```
 $ python server.py --help
 ```
+
+## Reset Tracks
+
+The database can be reset byr running the following command:
+
+```
+ $ python reset_tracks.py
+```
+
+This command will also move the tracks saved in the backup folder back into the input folder, removing files from the output and life folders, in order to revert to the initial state for development.
