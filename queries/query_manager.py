@@ -489,7 +489,6 @@ def fetch_from_db(cur, items, debug = False):
             print("-------query------- ")
             print(template)
             print("--------------")
-        
 
         for result in temp:
             for i in range(0, size*4, 4):
@@ -506,9 +505,9 @@ def fetch_from_db(cur, items, debug = False):
                 
                 try:
                     int(id)
-                    results.append(ResultInterval(id, start_date, end_date, points, None))
+                    results.append(ResultInterval(id, start_date, end_date, None))
                 except ValueError:
-                    results.append(ResultRange(id, start_date, end_date, points, None))
+                    results.append(ResultRange(id, start_date, end_date, None))
                     
             all.append(results)
             results = []
@@ -518,7 +517,6 @@ def fetch_from_db(cur, items, debug = False):
     size2 = len(all)
 
     to_show = all
-
     to_show = utils.refine_with_group_by(to_show)
     to_show = utils.refine_with_group_by_date(to_show)
 
@@ -543,14 +541,20 @@ def fetch_from_db(cur, items, debug = False):
         if value != []:
             for item in value:
                 if utils.represent_int(item[2]):
-                    temp = ResultInterval(item[2], item[0], item[1], item[3], None)
+                    print("0", item[0])
+                    print("1", item[1])
+                    print("2", item[2])
+                    print("3", item[3])
+                    temp = ResultInterval(item[2], item[0], item[1], item[3])
                 else:
-                    temp = ResultRange(item[2], item[0], item[1], item[3], None)
-            end.append(temp)
+                    print("0", item[0])
+                    print("1", item[1])
+                    print("2", item[2])
+                    print("3", item[3])
+                    temp = ResultRange(item[2], item[0], item[1], item[3])
+            end.append(temp.to_json())
     
-    #TODO Jsonify Result Classes 
-    # return {"result": end, "segments": segments}
-    return {"result": [], "segments": segments}
+    return {"result": end, "segments": segments}
 
 
 def generate_queries(items):
@@ -595,19 +599,19 @@ class ResultRange:
     start_date = None
     end_date = None
     type = "range"
-    points = []
     date = None
 
-    def __init__(self, id, start_date, end_date, points, date):
+    def __init__(self, id, start_date, end_date, date):
         now = datetime.datetime.now()
         if date:
             self.date = date
         else:
             self.date = start_date.date()
         self.id = id
-        self.start_date = start_date.replace(year=now.year, day=now.day, month=now.month)
-        self.end_date = end_date.replace(year=now.year, day=now.day, month=now.month)
-        self.points = points
+        #self.start_date = start_date.replace(year=now.year, day=now.day, month=now.month)
+        self.start_date = start_date
+        #self.end_date = end_date.replace(year=now.year, day=now.day, month=now.month)
+        self.end_date = end_date
         self.type = "range"
 
     def __repr__(self):
@@ -618,25 +622,34 @@ class ResultRange:
 
     def __eq__(self, other):
         return self.start_date == other.start_date and self.end_date == other.end_date and self.id == other.id and self.type == other.type
+    
+    def to_json(self):
+        return {
+            'id': self.id,
+            'start_date': self.start_date,
+            'end_date': self.end_date,
+            'date': self.date,
+            'type': self.type
+        }
 
 class ResultInterval:
     id = ""
     start_date = None
     end_date = None
     type = "interval"
-    points = []
     date = None
 
-    def __init__(self, id, start_date, end_date, points, date):
+    def __init__(self, id, start_date, end_date, date):
         now = datetime.datetime.now()
         if date:
             self.date = date
         else:
             self.date = start_date.date()
         self.id = id
-        self.start_date = start_date.replace(year=now.year, day=now.day, month=now.month)
-        self.end_date = end_date.replace(year=now.year, day=now.day, month=now.month)
-        self.points = points
+        #self.start_date = start_date.replace(year=now.year, day=now.day, month=now.month)
+        self.start_date = start_date
+        #self.end_date = end_date.replace(year=now.year, day=now.day, month=now.month)
+        self.end_date = end_date
         self.type = "interval"
 
     def __repr__(self):
@@ -647,5 +660,14 @@ class ResultInterval:
 
     def __eq__(self, other):
         return self.start_date == other.start_date and self.end_date == other.end_date and self.id == other.id and self.type == other.type
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'start_date': self.start_date,
+            'end_date': self.end_date,
+            'date': self.date,
+            'type': self.type
+        }
    
 
