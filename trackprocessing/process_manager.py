@@ -391,12 +391,24 @@ class ProcessingManager(object):
             track (:obj:tracktotrip.Track`)
             changes (:obj:`list` of :obj:`dict`): Details of, user made, changes
         """
+        config = self.config
 
         track = self.current_track().copy()
 
         if not track.name or len(track.name) == 0:
             track.name = track.generate_name(self.config['trip_name_format'])
 
+        track = track.to_trip(
+            smooth=config['smoothing']['use'],
+            smooth_strategy=config['smoothing']['algorithm'],
+            smooth_noise=config['smoothing']['noise'],
+            seg=config['segmentation']['use'],
+            seg_eps=config['segmentation']['epsilon'],
+            seg_min_time=config['segmentation']['min_time'],
+            simplify=config['simplification']['use'],
+            simplify_max_dist_error=config['simplification']['max_dist_error'],
+            simplify_max_speed_error=config['simplification']['max_speed_error']
+        )
         
         # Backup trips and move to output
         if self.config['backup_path']:
@@ -427,6 +439,17 @@ class ProcessingManager(object):
                 True,
                 self.debug
             )
+
+            for trip in track.segments:
+                # To database
+                db.insert_segment(
+                    cur,
+                    trip,
+                    self.config['location']['max_distance'],
+                    self.config['location']['min_samples'],
+                    self.debug
+                )
+
             db.dispose(conn, cur)
 
         self.next_day()
