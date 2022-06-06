@@ -55,7 +55,8 @@ class QueryManager(object):
 
         items = parse_items(payload["data"])
         generate_queries(items)
-        return fetch_from_db(cur, items, self.debug)
+        self.moreResults, results = fetch_from_db(cur, items, self.debug)
+        return results
 
 class Range:
     start = ""
@@ -235,7 +236,9 @@ class Range:
 
 
     def generate_query(self):
-        base_query = " SELECT DISTINCT stay_id, start_date, end_date, locations.centroid FROM "
+        #base_query = " SELECT DISTINCT stay_id, start_date, end_date, locations.centroid FROM "
+        base_query = " SELECT DISTINCT location_label, start_date, end_date, locations.centroid FROM "
+
         tables, with_chunks, where_chunks = self.query_chunks()
 
         query = ""
@@ -445,6 +448,7 @@ class Interval:
 
 def fetch_from_db(cur, items, debug = False):
     results = []
+    moreResults = []
     all = []
     segments = []
 
@@ -462,7 +466,7 @@ def fetch_from_db(cur, items, debug = False):
             if i % 2 == 0:
                 select += "q"+str(i)+".trip_id,q"+str(i)+".start_date,q"+str(i)+".end_date,q"+str(i)+".points, "
             else:
-                select += "q"+str(i)+".stay_id,q"+str(i)+".start_date,q"+str(i)+".end_date,q"+str(i)+".centroid, "
+                select += "q"+str(i)+".location_label,q"+str(i)+".start_date,q"+str(i)+".end_date,q"+str(i)+".centroid, "
         select = select.rstrip(', ')
 
         template = template%(select, items[0].get_query(),items[1].get_query(), items[2].get_query())
@@ -479,16 +483,17 @@ def fetch_from_db(cur, items, debug = False):
     else:
         if debug:
             print("Empty query")
-        return {"result": [], "segments": []}
+        return {"results": [], "segments": []}
 
 
     try:
-        cur.execute(template)
-        temp = cur.fetchall()
         if debug:
             print("-------query------- ")
             print(template)
             print("--------------")
+        
+        cur.execute(template)
+        temp = cur.fetchall()
 
         for result in temp:
             for i in range(0, size*4, 4):
@@ -517,14 +522,13 @@ def fetch_from_db(cur, items, debug = False):
     size2 = len(all)
 
     to_show = all
+
     to_show = utils.refine_with_group_by(to_show)
     to_show = utils.refine_with_group_by_date(to_show)
 
-
-    # for key, value in list(to_show.items()):
-    #     global moreResults
-    #     temp = value
-    #     moreResults.append(temp)
+    for key, value in list(to_show.items()):
+        temp = value
+        moreResults.append(temp)
 
 
     id = 0
@@ -538,23 +542,22 @@ def fetch_from_db(cur, items, debug = False):
     i = 0
     end = []
     for key, value in list(summary.items()):
+        data = []
         if value != []:
             for item in value:
                 if utils.represent_int(item[2]):
-                    print("0", item[0])
-                    print("1", item[1])
-                    print("2", item[2])
-                    print("3", item[3])
                     temp = ResultInterval(item[2], item[0], item[1], item[3])
                 else:
-                    print("0", item[0])
-                    print("1", item[1])
-                    print("2", item[2])
-                    print("3", item[3])
                     temp = ResultRange(item[2], item[0], item[1], item[3])
-            end.append(temp.to_json())
-    
-    return {"result": end, "segments": segments}
+                
+                temp.moreResultsId = i
+                data.append(temp.to_json())
+
+            result = {'size': str(size), 'total': str(len(to_show)), 'data': data}
+            end.append(result)
+        i += 1
+        
+    return moreResults, {"results": end, "segments": segments}
 
 
 def generate_queries(items):
@@ -584,16 +587,6 @@ def parse_items(obj):
     return items
 
 
-class MyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime.datetime):
-            return str(obj)
-
-        if isinstance(obj, datetime.date):
-            return str(obj)
-
-        return json.JSONEncoder.default(self, obj)
-
 class ResultRange:
     id = ""
     start_date = None
@@ -608,9 +601,7 @@ class ResultRange:
         else:
             self.date = start_date.date()
         self.id = id
-        #self.start_date = start_date.replace(year=now.year, day=now.day, month=now.month)
         self.start_date = start_date
-        #self.end_date = end_date.replace(year=now.year, day=now.day, month=now.month)
         self.end_date = end_date
         self.type = "range"
 
@@ -622,14 +613,14 @@ class ResultRange:
 
     def __eq__(self, other):
         return self.start_date == other.start_date and self.end_date == other.end_date and self.id == other.id and self.type == other.type
-    
+
     def to_json(self):
         return {
-            'id': self.id,
-            'start_date': self.start_date,
-            'end_date': self.end_date,
-            'date': self.date,
-            'type': self.type
+            'id': self.id, 
+            'date': self.date, 
+            'start_date': self.start_date, 
+            'end_date': self.end_date, 
+            'type': self.type 
         }
 
 class ResultInterval:
@@ -646,9 +637,7 @@ class ResultInterval:
         else:
             self.date = start_date.date()
         self.id = id
-        #self.start_date = start_date.replace(year=now.year, day=now.day, month=now.month)
         self.start_date = start_date
-        #self.end_date = end_date.replace(year=now.year, day=now.day, month=now.month)
         self.end_date = end_date
         self.type = "interval"
 
@@ -663,11 +652,11 @@ class ResultInterval:
 
     def to_json(self):
         return {
-            'id': self.id,
-            'start_date': self.start_date,
-            'end_date': self.end_date,
-            'date': self.date,
-            'type': self.type
+            'id': self.id, 
+            'date': self.date, 
+            'start_date': self.start_date, 
+            'end_date': self.end_date, 
+            'type': self.type 
         }
    
 
