@@ -118,23 +118,35 @@ def load_from_segments_annotated(cur, track, life_content, max_distance, min_sam
     life = Life()
     life.from_string(life_content.split('\n'))
 
-    def in_loc(points, i):
-        point = points[i]
-        location = life.where_when(life_date(point, debug), life_time(point, debug))
+    def in_loc(points, start, end):
+        startPoint = points[start]
+        endPoint = points[end]
+        startLocation = life.where_when(life_date(startPoint, debug), life_time(startPoint, debug))
+        endLocation = life.where_when(life_date(endPoint, debug), life_time(endPoint, debug))
+
         if (debug):
-            print(('in_loc', i, point.lat, point.lon))
-            print(('location', location))
-        if location is not None:
-            if isinstance(location, str):
-                insert_location(cur, location, point, max_distance, min_samples, debug)
-            else:
-                for loc in location:
-                    insert_location(cur, loc, point, max_distance, min_samples, debug)
+            print(('in_loc', start, startLocation, startPoint.lat, startPoint.lon))
+            print(('in_loc', end, endLocation, endPoint.lat, endPoint.lon))
+        
+        if startLocation is not None:
+            if isinstance(startLocation, str):
+                insert_location(cur, startLocation, startPoint, max_distance, min_samples, debug)
+            else: # is a tuple with (start, end) -> multiplace
+                insert_location(cur, startLocation[0], startPoint, max_distance, min_samples, debug)
+                if endLocation is not None:
+                    insert_location(cur, startLocation[1], endPoint, max_distance, min_samples, debug)
+
+        if endLocation is not None:
+            if isinstance(endLocation, str):
+                insert_location(cur, endLocation, endPoint, max_distance, min_samples, debug)
+            else: # is a tuple with (start, end) -> multiplace
+                if startLocation is not None:
+                    insert_location(cur, endLocation[0], startPoint, max_distance, min_samples, debug)
+                insert_location(cur, endLocation[1], endPoint, max_distance, min_samples, debug)
 
     if insert_locs:
         for segment in track.segments:
-            in_loc(segment.points, 0)
-            in_loc(segment.points, -1)
+            in_loc(segment.points, 0, -1)
             # find trip
             #insert_segment(cur, segment, max_distance, min_samples)
 
