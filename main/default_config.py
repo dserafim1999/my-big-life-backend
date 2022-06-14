@@ -16,7 +16,7 @@ CONFIG = {
         'pass': None
     },
     'default_timezone': 0,
-    'life_annotations': 'all', # all (for stays + trips), stays, trips
+    'trip_annotations': True,
     'smoothing': {
         'use': True,
         'algorithm': 'inverse',

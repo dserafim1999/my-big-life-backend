@@ -778,10 +778,15 @@ class ProcessingManager(object):
             'step': self.current_step,
             'queue': list(self.queue.items()),
             'track': current.to_json() if current else None,
-            'life': current.to_life() if current and self.current_step is Step.annotate else '',
+            'life': self.get_life(current) if current and self.current_step is Step.annotate else '',
             'currentDay': self.current_day,
             'lifeQueue': self.life_queue
         }
+
+    def get_life(self, track):
+        """ Generates LIFE file from track, or uses existing one for track's day
+        """
+        return track.to_life(self.config["trip_annotations"])
 
     def complete_trip(self, from_point, to_point):
         """ Generates possible ways to complete a set of trips
