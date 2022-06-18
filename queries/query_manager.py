@@ -13,6 +13,7 @@ from operator import itemgetter
 
 
 import psycopg2
+from scipy import rand
 from main import db
 from utils import update_dict
 
@@ -542,22 +543,44 @@ def fetch_from_db(cur, items, debug = False):
     i = 0
     end = []
     for key, value in list(summary.items()):
-        data = []
+        stays = []
+        routes = []
         if value != []:
             for item in value:
                 if utils.represent_int(item[2]):
-                    temp = ResultInterval(item[2], item[0], item[1], item[3])
+                    temp = ResultInterval(item[2], item[0], item[1], item[3], i)
+                    routes.append({"start": True, "time":item[0]})
+                    routes.append({"start": False, "time": item[1]})
                 else:
-                    temp = ResultRange(item[2], item[0], item[1], item[3])
+                    temp = ResultRange(item[2], item[0], item[1], item[3], i)
+                    stays.append({"start": True, "time":item[0]})
+                    stays.append({"start": False, "time": item[1]})
                 
-                temp.moreResultsId = i
-                data.append(temp.to_json())
-
-            result = {'size': str(size), 'total': str(len(to_show)), 'data': data}
-            end.append(result)
+            end.append(sort_data(stays, routes, i))
+        
         i += 1
+
+    print(end)
         
     return moreResults, {"results": end, "segments": segments}
+
+def sort_data(stays, routes, moreResultsId):
+    """TODO comments"""
+    num = 0
+    stays = sorted(stays, key=lambda d: d["time"].time()) 
+    stays_freq = []
+    for i in range(1, len(stays)):
+        num = num + 1 if stays[i - 1]["start"] else num - 1
+        stays_freq.append({"start": stays[i - 1]["time"], "end": stays[i]["time"], "freq": num})
+
+    num = 0
+    routes = sorted(routes, key=lambda d: d["time"].time()) 
+    routes_freq = []
+    for i in range(1, len(routes)):
+        num = num + 1 if routes[i - 1]["start"] else num - 1
+        routes_freq.append({"start": routes[i - 1]["time"], "end": routes[i]["time"], "freq": num})
+
+    return {"stays": stays_freq, "routes": routes_freq, "moreResultsId": moreResultsId}
 
 
 def generate_queries(items):
@@ -593,8 +616,9 @@ class ResultRange:
     end_date = None
     type = "range"
     date = None
+    moreResultsId = None
 
-    def __init__(self, id, start_date, end_date, date):
+    def __init__(self, id, start_date, end_date, date, moreResultsId = None):
         now = datetime.datetime.now()
         if date:
             self.date = date
@@ -603,6 +627,7 @@ class ResultRange:
         self.id = id
         self.start_date = start_date
         self.end_date = end_date
+        self.moreResultsId = moreResultsId
         self.type = "range"
 
     def __repr__(self):
@@ -617,6 +642,7 @@ class ResultRange:
     def to_json(self):
         return {
             'id': self.id, 
+            'moreResultsId': self.moreResultsId,
             'date': self.date, 
             'start_date': self.start_date, 
             'end_date': self.end_date, 
@@ -629,8 +655,9 @@ class ResultInterval:
     end_date = None
     type = "interval"
     date = None
+    moreResultsId = None
 
-    def __init__(self, id, start_date, end_date, date):
+    def __init__(self, id, start_date, end_date, date, moreResultsId = None):
         now = datetime.datetime.now()
         if date:
             self.date = date
@@ -639,6 +666,7 @@ class ResultInterval:
         self.id = id
         self.start_date = start_date
         self.end_date = end_date
+        self.moreResultsId = moreResultsId
         self.type = "interval"
 
     def __repr__(self):
@@ -653,6 +681,7 @@ class ResultInterval:
     def to_json(self):
         return {
             'id': self.id, 
+            'moreResultsId': self.moreResultsId,
             'date': self.date, 
             'start_date': self.start_date, 
             'end_date': self.end_date, 
