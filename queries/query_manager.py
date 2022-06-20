@@ -488,9 +488,9 @@ def fetch_from_db(cur, items, debug = False):
 
     try:
         if debug:
-            print("-------query------- ")
+            print("-------query-------")
             print(template)
-            print("--------------")
+            print("-------------------")
         
         cur.execute(template)
         temp = cur.fetchall()
@@ -542,40 +542,38 @@ def fetch_from_db(cur, items, debug = False):
     i = 0
     results = []
     for key, value in list(summary.items()):
-        stays = []
-        routes = []
-        result = []
+        stays, routes, result = [], [], []
         if value != []:
             for item in value:
                 if utils.represent_int(item[2]):
                     result.append(ResultInterval(item[2], item[0], item[1], item[3], i).to_json())
-                    routes.append({"start": True, "time":item[0]})
-                    routes.append({"start": False, "time": item[1]})
+                    routes.append({"start": True, "time":item[0], "location": item[2]})
+                    routes.append({"start": False, "time": item[1], "location": item[2]})
                 else:
                     result.append(ResultRange(item[2], item[0], item[1], item[3], i).to_json())
-                    stays.append({"start": True, "time":item[0]})
-                    stays.append({"start": False, "time": item[1]})
+                    stays.append({"start": True, "time":item[0], "location": item[2]})
+                    stays.append({"start": False, "time": item[1], "location": item[2]})
                 
-            results.append({"id": i, "result": result, "render": sort_data(stays, routes)})
+            results.append({"id": i, "result": result, "render": sort_render_data(stays, routes), 'multiple': len(result) > size})
         i += 1
 
     return {"results": results, "segments": segments}
 
-def sort_data(stays, routes):
+def sort_render_data(stays, routes):
     """TODO comments"""
     num = 0
     stays = sorted(stays, key=lambda d: d["time"].time()) 
     stays_freq = []
     for i in range(1, len(stays)):
         num = num + 1 if stays[i - 1]["start"] else num - 1
-        stays_freq.append({"start": stays[i - 1]["time"], "end": stays[i]["time"], "freq": num, "id": i})
+        stays_freq.append({"start": stays[i - 1]["time"], "end": stays[i]["time"], "freq": num, "location": stays[i - 1]["location"], "id": i})
 
     num = 0
     routes = sorted(routes, key=lambda d: d["time"].time()) 
     routes_freq = []
     for i in range(1, len(routes)):
         num = num + 1 if routes[i - 1]["start"] else num - 1
-        routes_freq.append({"start": routes[i - 1]["time"], "end": routes[i]["time"], "freq": num, "id": i})
+        routes_freq.append({"start": routes[i - 1]["time"], "end": routes[i]["time"], "freq": num, "location": routes[i - 1]["location"], "id": i})
 
     return {"stays": stays_freq, "routes": routes_freq}
 
@@ -626,6 +624,7 @@ class ResultRange:
         self.start_date = start_date
         self.end_date = end_date
         self.moreResultsId = moreResultsId
+        self.render = {"start": start_date, "end": end_date, "freq": 1, "location": id}
         self.type = "range"
 
     def __repr__(self):
@@ -667,6 +666,7 @@ class ResultInterval:
         self.start_date = start_date
         self.end_date = end_date
         self.moreResultsId = moreResultsId
+        self.render = {"start": start_date, "end": end_date, "freq": 1, "location": id}
         self.type = "interval"
 
     def __repr__(self):
