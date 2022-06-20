@@ -1,5 +1,6 @@
 import datetime
 import itertools
+import json
 import re
 import time
 
@@ -232,3 +233,14 @@ def refine_with_group_by_date(to_show):
                 dict[str(key1)+str(key)] = []
                 dict[str(key1)+str(key)] += list1
     return dict
+
+class DateEncoder(json.JSONEncoder):
+
+    def default(self, obj):
+        if isinstance(obj, datetime.datetime):
+            return str(obj)
+
+        if isinstance(obj, datetime.date):
+            return str(obj)
+
+        return json.JSONEncoder.default(self, obj)
