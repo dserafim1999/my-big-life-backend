@@ -44,8 +44,13 @@ def duration_to_sql(duration):
     return final_minutes
 
 
-def fuzzy_to_sql(duration): #duration is divided in half for query purposes
-    minutes = int(''.join([x for x in duration if x.isdigit()])) / 2.0 #equivalent to js parseInt
+def fuzzy_to_sql(duration): #duration is divided in half for query purposes if not specified as ±
+    if not duration[0].isdigit():
+        if duration[0] == '±':
+            minutes = int(''.join([x for x in duration if x.isdigit()]))
+    else:
+        minutes = int(''.join([x for x in duration if x.isdigit()])) / 2.0 #equivalent to js parseInt
+        
     minutes = time.strftime("%H:%M:%S", time.gmtime(minutes*60)) #uses seconds
     return minutes
 
