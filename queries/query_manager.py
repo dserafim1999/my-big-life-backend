@@ -237,7 +237,7 @@ class Range:
 
     def generate_query(self):
         #base_query = " SELECT DISTINCT stay_id, start_date, end_date, locations.centroid FROM "
-        base_query = " SELECT DISTINCT location_label, start_date, end_date, locations.centroid FROM "
+        base_query = " SELECT DISTINCT stay_id, start_date, end_date, locations.centroid, locations.label FROM "
 
         tables, with_chunks, where_chunks = self.query_chunks()
 
@@ -410,7 +410,7 @@ class Interval:
 
 
     def generate_query(self):
-        base_query = " SELECT DISTINCT trips.trip_id, start_date, end_date, points FROM "
+        base_query = " SELECT DISTINCT trips.trip_id, start_date, end_date, points, timestamps FROM "
         tables, with_chunks, where_chunks = self.query_chunks()
 
         query = ""
@@ -464,9 +464,9 @@ def fetch_from_db(cur, items, debug = False):
         select = ""
         for i in range(1, size+1):
             if i % 2 == 0:
-                select += "q"+str(i)+".trip_id,q"+str(i)+".start_date,q"+str(i)+".end_date,q"+str(i)+".points, "
+                select += "q"+str(i)+".trip_id,q"+str(i)+".start_date,q"+str(i)+".end_date,q"+str(i)+".points,q"+str(i)+".timestamps, "
             else:
-                select += "q"+str(i)+".location_label,q"+str(i)+".start_date,q"+str(i)+".end_date,q"+str(i)+".centroid, "
+                select += "q"+str(i)+".stay_id,q"+str(i)+".start_date,q"+str(i)+".end_date,q"+str(i)+".centroid,q"+str(i)+".label, "
         select = select.rstrip(', ')
 
         template = template%(select, items[0].get_query(),items[1].get_query(), items[2].get_query())
@@ -496,24 +496,22 @@ def fetch_from_db(cur, items, debug = False):
         temp = cur.fetchall()
 
         for result in temp:
-            for i in range(0, size*4, 4):
+            for i in range(0, size*5, 5):
                 id = result[i]
                 start_date = result[i+1]
                 end_date = result[i+2]
-                points = db.to_segment(result[i+3], debug=debug).to_json()
-                points['id'] = id
 
-                if size == 1: # only stay's location
-                    segments.append(points)
-                elif (i/4) % 2 != 0: # route points
-                    segments.append(points)
-                
-                try:
-                    int(id)
+                if (i/5) % 2 != 0: # route points
+                    points = db.to_segment(result[i+3], result[i+4], debug=debug).to_json()
+                    points['id'] = id
                     results.append(ResultInterval(id, start_date, end_date, None))
-                except ValueError:
-                    results.append(ResultRange(id, start_date, end_date, None))
-                    
+                else: # stay
+                    points = db.to_segment(result[i+3], start_date, debug=debug).to_json()
+                    points['id'] = id
+                    results.append(ResultRange(result[i+4], start_date, end_date, None))
+                
+                segments.append(points)
+                
             all.append(results)
             results = []
     except psycopg2.ProgrammingError as e:
