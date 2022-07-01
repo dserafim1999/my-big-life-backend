@@ -27,6 +27,8 @@ class QueryManager(object):
     def __init__(self, config_file, debug):
         self.config = dict(CONFIG)
         self.debug = debug
+        self.numResults = 10
+        self.currentQuerySize = 0
 
         if config_file and isfile(expanduser(config_file)):
             with open(expanduser(config_file), 'r') as config_file:
@@ -54,9 +56,172 @@ class QueryManager(object):
     def execute_query(self, payload):
         conn, cur = self.db_connect()
 
-        items = parse_items(payload["data"])
-        generate_queries(items)
-        return fetch_from_db(cur, items, self.debug)
+        items = self.parse_items(payload["data"])
+        self.generate_queries(items)
+        return self.fetch_from_db(cur, items, self.debug)
+
+    def fetch_from_db(self, cur, items, debug = False):
+        results = []
+        segments = []
+        to_show= []
+
+        self.loadMoreId = 0
+        self.currentQuerySize = len(items)
+
+        if self.currentQuerySize > 1:
+            template = "SELECT %s " \
+                    " FROM (%s) q1 INNER JOIN (%s) q2 ON q1.end_date = q2.start_date " \
+                    " INNER JOIN (%s) q3 ON q2.end_date = q3.start_date "
+
+            add_template = " INNER JOIN (%s) q%s ON q%s.end_date = q%s.start_date " \
+                        " INNER JOIN (%s) q%s ON q%s.end_date = q%s.start_date "
+
+            select = ""
+            for i in range(1, self.currentQuerySize+1):
+                if i % 2 == 0:
+                    select += "q"+str(i)+".trip_id,q"+str(i)+".start_date,q"+str(i)+".end_date,q"+str(i)+".points,q"+str(i)+".timestamps, "
+                else:
+                    select += "q"+str(i)+".stay_id,q"+str(i)+".start_date,q"+str(i)+".end_date,q"+str(i)+".centroid,q"+str(i)+".label, "
+            select = select.rstrip(', ')
+
+            template = template%(select, items[0].get_query(),items[1].get_query(), items[2].get_query())
+
+            if self.currentQuerySize > 3:
+                id = 4
+                how_many = math.floor((self.currentQuerySize-3)/2)
+                for j in range(1, how_many+1):
+                    if id <= self.currentQuerySize:
+                        template += add_template%(items[id-1].get_query(), id, id-1, id, items[id].get_query(), id+1, id, id+1)
+                        id += 2
+        elif self.currentQuerySize == 1:
+            template = items[0].get_query()
+        else:
+            if debug:
+                print("Empty query")
+            return {"results": [], "segments": []}
+
+
+        try:
+            if debug:
+                print("-------query-------")
+                print(template)
+                print("-------------------")
+            
+            cur.execute(template)
+            temp = cur.fetchall()
+
+            for result in temp:
+                for i in range(0, self.currentQuerySize*5, 5):
+                    id = result[i]
+                    start_date = result[i+1]
+                    end_date = result[i+2]
+
+                    if (i/5) % 2 != 0: # route points
+                        points = db.to_segment(result[i+3], result[i+4], debug=debug).to_json()
+                        points['id'] = id
+                        results.append(ResultInterval(id, start_date, end_date, None))
+                    else: # stay
+                        points = db.to_segment(result[i+3], start_date, debug=debug).to_json()
+                        points['id'] = id
+                        results.append(ResultRange(result[i+4], start_date, end_date, None))
+                    
+                    segments.append(points)
+                    
+                to_show.append(results)
+                results = []
+        except psycopg2.ProgrammingError as e:
+            print(("error ", e))
+
+        size = len(to_show)
+
+        to_show = utils.refine_with_group_by(to_show)
+        to_show = utils.refine_with_group_by_date(to_show)
+
+        id = 0
+        for key, value in list(to_show.items()):
+            to_show[id] = to_show.pop(key)
+            id += 1
+
+        self.allResults = utils.quartiles(to_show, size)
+        self.allSegments = segments #TODO add segment to result instead
+
+        return self.load_results()
+
+    def load_results(self):
+        i = 0
+        results = []
+        start_index  = self.loadMoreId * self.numResults
+        end_index  = self.loadMoreId * self.numResults + self.numResults
+        end_index = len(self.allResults) if end_index >= len(self.allResults) else end_index
+
+        loadedResults = list(self.allResults.items())[start_index : end_index] if self.loadMoreId * self.numResults < len(self.allResults) else []
+
+        for key, value in loadedResults:
+            stays, routes, result = [], [], []
+            if value != []:
+                for item in value:
+                    if utils.represent_int(item[2]):
+                        id = item[2]
+                        result.append(ResultInterval(id, item[0], item[1], item[3]).to_json())
+                        routes.append({"start": True, "time":item[0], "location": item[2]})
+                        routes.append({"start": False, "time": item[1], "location": item[2]})
+                    else:
+                        id = item[2] + str(i)
+                        result.append(ResultRange(item[2], item[0], item[1], item[3]).to_json())
+                        stays.append({"start": True, "time":item[0], "location": item[2]})
+                        stays.append({"start": False, "time": item[1], "location": item[2]})
+                    
+                results.append({"id": id, "result": result, "render": self.sort_render_data(stays, routes), 'multiple': len(result) > self.currentQuerySize})
+            i += 1
+
+        self.loadMoreId += 1
+
+        return {"results": results, "segments": self.allSegments[start_index : end_index], "total": len(self.allResults)}
+
+    def sort_render_data(self, stays, routes):
+        """TODO comments"""
+        num = 0
+        stays = sorted(stays, key=lambda d: d["time"].time()) 
+        stays_freq = []
+        for i in range(1, len(stays)):
+            num = num + 1 if stays[i - 1]["start"] else num - 1
+            stays_freq.append({"start": stays[i - 1]["time"], "end": stays[i]["time"], "freq": num, "location": stays[i - 1]["location"], "id": i})
+
+        num = 0
+        routes = sorted(routes, key=lambda d: d["time"].time()) 
+        routes_freq = []
+        for i in range(1, len(routes)):
+            num = num + 1 if routes[i - 1]["start"] else num - 1
+            routes_freq.append({"start": routes[i - 1]["time"], "end": routes[i]["time"], "freq": num, "location": routes[i - 1]["location"], "id": i})
+
+        return {"stays": stays_freq, "routes": routes_freq}
+
+
+    def generate_queries(self, items):
+        for item in items:
+            item.generate_query()
+
+
+    def parse_items(self, obj):
+        items = []
+        global date
+        date = obj[0]["date"]
+
+        iterobj = iter(obj) #skip the first, that is the date
+        next(iterobj)
+
+        for item in iterobj:
+            if item.get("spatialRange") != None: #its a range
+                global previousEndDate
+                if len(items) == 0:
+                    previousEndDate = utils.get_all_but_sign(item["start"])
+                else:
+                    previousEndDate = utils.get_all_but_sign(item["end"])
+                items.append(Range(item["start"], item["end"], item["temporalStartRange"], item["temporalEndRange"], item["duration"], item["location"], item["spatialRange"]))
+            else: #its an interval
+                items.append(Interval(item["start"], item["end"], item["temporalStartRange"], item["temporalEndRange"], item["duration"], item["route"]))
+
+        return items
 
 class Range:
     start = ""
@@ -236,7 +401,6 @@ class Range:
 
 
     def generate_query(self):
-        #base_query = " SELECT DISTINCT stay_id, start_date, end_date, locations.centroid FROM "
         base_query = " SELECT DISTINCT stay_id, start_date, end_date, locations.centroid, locations.label FROM "
 
         tables, with_chunks, where_chunks = self.query_chunks()
@@ -443,176 +607,15 @@ class Interval:
 
         #print(query)
         self.query =  query
-
-
-
-def fetch_from_db(cur, items, debug = False):
-    results = []
-    moreResults = []
-    all = []
-    segments = []
-
-    size = len(items)
-    if size > 1:
-        template = "SELECT %s " \
-                   " FROM (%s) q1 INNER JOIN (%s) q2 ON q1.end_date = q2.start_date " \
-                   " INNER JOIN (%s) q3 ON q2.end_date = q3.start_date "
-
-        add_template = " INNER JOIN (%s) q%s ON q%s.end_date = q%s.start_date " \
-                       " INNER JOIN (%s) q%s ON q%s.end_date = q%s.start_date "
-
-        select = ""
-        for i in range(1, size+1):
-            if i % 2 == 0:
-                select += "q"+str(i)+".trip_id,q"+str(i)+".start_date,q"+str(i)+".end_date,q"+str(i)+".points,q"+str(i)+".timestamps, "
-            else:
-                select += "q"+str(i)+".stay_id,q"+str(i)+".start_date,q"+str(i)+".end_date,q"+str(i)+".centroid,q"+str(i)+".label, "
-        select = select.rstrip(', ')
-
-        template = template%(select, items[0].get_query(),items[1].get_query(), items[2].get_query())
-
-        if size > 3:
-            id = 4
-            how_many = math.floor((size-3)/2)
-            for j in range(1, how_many+1):
-                if id <= size:
-                    template += add_template%(items[id-1].get_query(), id, id-1, id, items[id].get_query(), id+1, id, id+1)
-                    id += 2
-    elif size == 1:
-        template = items[0].get_query()
-    else:
-        if debug:
-            print("Empty query")
-        return {"results": [], "segments": []}
-
-
-    try:
-        if debug:
-            print("-------query-------")
-            print(template)
-            print("-------------------")
-        
-        cur.execute(template)
-        temp = cur.fetchall()
-
-        for result in temp:
-            for i in range(0, size*5, 5):
-                id = result[i]
-                start_date = result[i+1]
-                end_date = result[i+2]
-
-                if (i/5) % 2 != 0: # route points
-                    points = db.to_segment(result[i+3], result[i+4], debug=debug).to_json()
-                    points['id'] = id
-                    results.append(ResultInterval(id, start_date, end_date, None))
-                else: # stay
-                    points = db.to_segment(result[i+3], start_date, debug=debug).to_json()
-                    points['id'] = id
-                    results.append(ResultRange(result[i+4], start_date, end_date, None))
-                
-                segments.append(points)
-                
-            all.append(results)
-            results = []
-    except psycopg2.ProgrammingError as e:
-        print(("error ", e))
-
-    size2 = len(all)
-
-    to_show = all
-
-    to_show = utils.refine_with_group_by(to_show)
-    to_show = utils.refine_with_group_by_date(to_show)
-
-    for key, value in list(to_show.items()):
-        temp = value
-        moreResults.append(temp)
-
-
-    id = 0
-    for key, value in list(to_show.items()):
-        to_show[id] = to_show.pop(key)
-        id += 1
-
-
-    summary = utils.quartiles(to_show, size2)
-
-    i = 0
-    results = []
-    for key, value in list(summary.items()):
-        stays, routes, result = [], [], []
-        if value != []:
-            for item in value:
-                if utils.represent_int(item[2]):
-                    result.append(ResultInterval(item[2], item[0], item[1], item[3], i).to_json())
-                    routes.append({"start": True, "time":item[0], "location": item[2]})
-                    routes.append({"start": False, "time": item[1], "location": item[2]})
-                else:
-                    result.append(ResultRange(item[2], item[0], item[1], item[3], i).to_json())
-                    stays.append({"start": True, "time":item[0], "location": item[2]})
-                    stays.append({"start": False, "time": item[1], "location": item[2]})
-                
-            results.append({"id": i, "result": result, "render": sort_render_data(stays, routes), 'multiple': len(result) > size})
-        i += 1
-
-    return {"results": results, "segments": segments}
-
-def sort_render_data(stays, routes):
-    """TODO comments"""
-    num = 0
-    stays = sorted(stays, key=lambda d: d["time"].time()) 
-    stays_freq = []
-    for i in range(1, len(stays)):
-        num = num + 1 if stays[i - 1]["start"] else num - 1
-        stays_freq.append({"start": stays[i - 1]["time"], "end": stays[i]["time"], "freq": num, "location": stays[i - 1]["location"], "id": i})
-
-    num = 0
-    routes = sorted(routes, key=lambda d: d["time"].time()) 
-    routes_freq = []
-    for i in range(1, len(routes)):
-        num = num + 1 if routes[i - 1]["start"] else num - 1
-        routes_freq.append({"start": routes[i - 1]["time"], "end": routes[i]["time"], "freq": num, "location": routes[i - 1]["location"], "id": i})
-
-    return {"stays": stays_freq, "routes": routes_freq}
-
-
-def generate_queries(items):
-    for item in items:
-        item.generate_query()
-
-
-def parse_items(obj):
-    items = []
-    global date
-    date = obj[0]["date"]
-
-    iterobj = iter(obj) #skip the first, that is the date
-    next(iterobj)
-
-    for item in iterobj:
-        if item.get("spatialRange") != None: #its a range
-            global previousEndDate
-            if len(items) == 0:
-                previousEndDate = utils.get_all_but_sign(item["start"])
-            else:
-                previousEndDate = utils.get_all_but_sign(item["end"])
-            items.append(Range(item["start"], item["end"], item["temporalStartRange"], item["temporalEndRange"], item["duration"], item["location"], item["spatialRange"]))
-        else: #its an interval
-            items.append(Interval(item["start"], item["end"], item["temporalStartRange"], item["temporalEndRange"], item["duration"], item["route"]))
-
-    return items
-
-
 class ResultRange:
     id = ""
     start_date = None
     end_date = None
     type = "range"
     date = None
-    moreResultsId = None
     render = {}
 
-    def __init__(self, id, start_date, end_date, date, moreResultsId = None):
+    def __init__(self, id, start_date, end_date, date):
         now = datetime.datetime.now()
         if date:
             self.date = date
@@ -621,7 +624,6 @@ class ResultRange:
         self.id = id
         self.start_date = start_date
         self.end_date = end_date
-        self.moreResultsId = moreResultsId
         self.render = {"start": start_date, "end": end_date, "freq": 1, "location": id}
         self.type = "range"
 
@@ -637,7 +639,6 @@ class ResultRange:
     def to_json(self):
         return {
             'id': self.id, 
-            'moreResultsId': self.moreResultsId,
             'date': self.date, 
             'start_date': self.start_date, 
             'end_date': self.end_date, 
@@ -651,10 +652,9 @@ class ResultInterval:
     end_date = None
     type = "interval"
     date = None
-    moreResultsId = None
     render = {}
 
-    def __init__(self, id, start_date, end_date, date, moreResultsId = None):
+    def __init__(self, id, start_date, end_date, date):
         now = datetime.datetime.now()
         if date:
             self.date = date
@@ -663,7 +663,6 @@ class ResultInterval:
         self.id = id
         self.start_date = start_date
         self.end_date = end_date
-        self.moreResultsId = moreResultsId
         self.render = {"start": start_date, "end": end_date, "freq": 1, "location": id}
         self.type = "interval"
 
@@ -679,7 +678,6 @@ class ResultInterval:
     def to_json(self):
         return {
             'id': self.id, 
-            'moreResultsId': self.moreResultsId,
             'date': self.date, 
             'start_date': self.start_date, 
             'end_date': self.end_date, 

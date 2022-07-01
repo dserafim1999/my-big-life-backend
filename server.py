@@ -217,6 +217,16 @@ def execute_query():
     
     return set_headers(response)
 
+@app.route('/queries/loadMoreResults', methods=['POST'])
+def load_more_query_results():
+    """
+    Returns:
+        :obj:``
+    """
+    response = jsonify(query_manager.load_results())
+    
+    return set_headers(response)
+
 # Helpers
 
 def set_headers(response):
