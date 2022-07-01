@@ -27,13 +27,14 @@ class QueryManager(object):
     def __init__(self, config_file, debug):
         self.config = dict(CONFIG)
         self.debug = debug
-        self.numResults = 10
         self.currentQuerySize = 0
+        self.loadMoreId = 0
 
         if config_file and isfile(expanduser(config_file)):
             with open(expanduser(config_file), 'r') as config_file:
                 config = json.loads(config_file.read())
                 update_dict(self.config, config)
+        
 
     def update_config(self, new_config):
         update_dict(self.config, new_config)
@@ -58,9 +59,9 @@ class QueryManager(object):
 
         items = self.parse_items(payload["data"])
         self.generate_queries(items)
-        return self.fetch_from_db(cur, items, self.debug)
+        return self.fetch_from_db(cur, items, payload["loadAll"], self.debug)
 
-    def fetch_from_db(self, cur, items, debug = False):
+    def fetch_from_db(self, cur, items, loadAll, debug = False):
         results = []
         segments = []
         to_show= []
@@ -145,16 +146,22 @@ class QueryManager(object):
         self.allResults = utils.quartiles(to_show, size)
         self.allSegments = segments #TODO add segment to result instead
 
-        return self.load_results()
+        return self.load_results(loadAll)
 
-    def load_results(self):
+    def load_results(self, loadAll):
+        self.numResults = int(self.config['load_more_amount'])
+
         i = 0
         results = []
-        start_index  = self.loadMoreId * self.numResults
-        end_index  = self.loadMoreId * self.numResults + self.numResults
-        end_index = len(self.allResults) if end_index >= len(self.allResults) else end_index
+        
+        if (loadAll):
+            loadedResults = list(self.allResults.items())
+        else:
+            start_index  = self.loadMoreId * self.numResults
+            end_index  = self.loadMoreId * self.numResults + self.numResults
+            end_index = len(self.allResults) if end_index >= len(self.allResults) else end_index
 
-        loadedResults = list(self.allResults.items())[start_index : end_index] if self.loadMoreId * self.numResults < len(self.allResults) else []
+            loadedResults = list(self.allResults.items())[start_index : end_index] if self.loadMoreId * self.numResults < len(self.allResults) else []
 
         for key, value in loadedResults:
             stays, routes, result = [], [], []
@@ -166,7 +173,7 @@ class QueryManager(object):
                         routes.append({"start": True, "time":item[0], "location": item[2]})
                         routes.append({"start": False, "time": item[1], "location": item[2]})
                     else:
-                        id = item[2] + str(i)
+                        id = item[2] + str(start_index + i)
                         result.append(ResultRange(item[2], item[0], item[1], item[3]).to_json())
                         stays.append({"start": True, "time":item[0], "location": item[2]})
                         stays.append({"start": False, "time": item[1], "location": item[2]})
@@ -176,7 +183,7 @@ class QueryManager(object):
 
         self.loadMoreId += 1
 
-        return {"results": results, "segments": self.allSegments[start_index : end_index], "total": len(self.allResults)}
+        return {"results": results, "segments": self.allSegments, "total": len(self.allResults)}
 
     def sort_render_data(self, stays, routes):
         """TODO comments"""

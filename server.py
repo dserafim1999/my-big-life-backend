@@ -223,7 +223,7 @@ def load_more_query_results():
     Returns:
         :obj:``
     """
-    response = jsonify(query_manager.load_results())
+    response = jsonify(query_manager.load_results(False))
     
     return set_headers(response)
 

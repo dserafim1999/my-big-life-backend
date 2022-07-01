@@ -17,6 +17,7 @@ CONFIG = {
     },
     'default_timezone': 0,
     'trip_annotations': True,
+    'load_more_amount': 10,
     'smoothing': {
         'use': True,
         'algorithm': 'inverse',
