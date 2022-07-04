@@ -110,17 +110,18 @@ def quartiles(to_show, nr_queries):
 
         for result in value:
             for range in result[::2]:
-                startList.append((time.mktime(range.start_date.timetuple()), range.id, range.date))
-                endList.append((time.mktime(range.end_date.timetuple()), range.id, range.date))
+                startList.append((time.mktime(range.start_date.timetuple()), range.id, range.date, range.points))
+                endList.append((time.mktime(range.end_date.timetuple()), range.id, range.date, range.points))
             for interval in result[1::2]:
-                startListInterval.append((time.mktime(interval.start_date.timetuple()), interval.id, interval.date))
-                endListInterval.append((time.mktime(interval.end_date.timetuple()), interval.id, interval.date))
+                startListInterval.append((time.mktime(interval.start_date.timetuple()), interval.id, interval.date, interval.points))
+                endListInterval.append((time.mktime(interval.end_date.timetuple()), interval.id, interval.date, interval.points))
 
         endListOrdered = sorted(endList, key = lambda tup: tup[0])
         startListOrdered = sorted(startList, key = lambda tup: tup[0])
 
         endListIntervalOrdered = sorted(endListInterval, key = lambda tup: tup[0])
         startListIntervalOrdered = sorted(startListInterval, key = lambda tup: tup[0])
+
 
         if size > 4:
             size = 4
@@ -130,7 +131,6 @@ def quartiles(to_show, nr_queries):
 
         endTimesInterval = np.array_split(np.array([x[0] for x in endListIntervalOrdered]), size)
         startTimesInterval = np.array_split(np.array([x[0] for x in startListIntervalOrdered]), size)
-
 
         if nr_queries == 1:
             tempEnd = endTimes
@@ -167,7 +167,7 @@ def quartiles(to_show, nr_queries):
             for date in array:
                 startTI.append(datetime.datetime.fromtimestamp(date))
 
-        dict[key] = list(list(zip(startT, endT, [x[1] for x in startListOrdered], [x[2] for x in startListOrdered])) + list(zip(startTI, endTI, [x[1] for x in startListIntervalOrdered],[x[2] for x in startListIntervalOrdered])))
+        dict[key] = list(list(zip(startT, endT, [x[1] for x in startListOrdered], [x[2] for x in startListOrdered], [x[3] for x in startListOrdered])) + list(zip(startTI, endTI, [x[1] for x in startListIntervalOrdered],[x[2] for x in startListIntervalOrdered],[x[3] for x in startListIntervalOrdered])))
 
     return dict
 
