@@ -182,7 +182,7 @@ class QueryManager(object):
 
         self.loadMoreId += 1
 
-        return {"results": results, "total": len(self.allResults)}
+        return {"results": results, "total": len(self.allResults), "querySize": self.currentQuerySize}
 
     def sort_render_data(self, stays, routes):
         """TODO comments"""
