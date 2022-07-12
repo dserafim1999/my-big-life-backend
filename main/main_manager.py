@@ -42,14 +42,20 @@ class MainManager(object):
         else:
             return None, None
 
-    def get_all_trips(self):
+    def get_trips_and_locations(self):
         conn, cur = self.db_connect()
         result = []
         if conn and cur:
-            result = db.get_all_trips(cur, self.debug)
-        for val in result:
+            trips = db.get_trips(cur, self.debug)
+            locations = db.get_canonical_locations(cur, self.debug)
+        for val in trips:
             val['points'] = val['points'].to_json()
             val['points']['id'] = val['id']
+        for val in locations:
+            val['point'] = val['point'].to_json()
+            val['point']['label'] = val['label']
+            val['point']['id'] = val['id']
+
         db.dispose(conn, cur)
-        return [r['points'] for r in result]
+        return {"trips": [r['points'] for r in trips], "locations": [r['point'] for r in locations]}
 
