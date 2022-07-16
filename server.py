@@ -40,9 +40,9 @@ query_manager = QueryManager(args.config, args.debug)
 
 # General
 
-@app.route('/trips', methods=['GET'])
-def get_all_trips():
-    response = jsonify(manager.get_all_trips())
+@app.route('/tripsLocations', methods=['GET'])
+def get_trips_and_locations():
+    response = jsonify(manager.get_trips_and_locations())
     return set_headers(response)
 
 

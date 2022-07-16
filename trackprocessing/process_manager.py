@@ -518,7 +518,7 @@ class ProcessingManager(object):
                 life_all_file = expanduser(self.config['life_all'])
             else:
                 life_all_file = join(expanduser(self.config['life_path']), 'all.life')
-            save_to_file(life_all_file, "\n\n%s" % lifes, mode='a+')
+            save_to_file(life_all_file, "\n\n%s" % all_lifes, mode='a+')
 
         for life_file in self.life_queue:
             life_path = join(expanduser(self.config['input_path']), life_file)

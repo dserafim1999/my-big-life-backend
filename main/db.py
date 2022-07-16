@@ -526,11 +526,11 @@ def get_canonical_locations(cur, debug = False):
         :obj:`list` of :obj:`dict`:
             [{ 'id': 1, 'points': <tracktotrip.Segment> }, ...]
     """
-    cur.execute("SELECT label, point_cluster FROM locations")
+    cur.execute("SELECT location_id, label, centroid FROM locations")
     locations = cur.fetchall()
-    return [{'label': t[0], 'points': to_segment(t[1], debug=debug)} for t in locations]
+    return [{'id': t[0], 'label': t[1], 'point': to_point(t[2], debug=debug)} for t in locations]
 
-def get_all_trips(cur, debug = False):
+def get_trips(cur, debug = False):
     """ Gets trips in db
 
     Args:

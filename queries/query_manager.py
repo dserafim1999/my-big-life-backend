@@ -10,6 +10,7 @@ import math
 
 from os.path import expanduser, isfile
 from operator import itemgetter
+from traceback import print_tb
 
 
 import psycopg2
@@ -120,13 +121,11 @@ class QueryManager(object):
                     if (i/5) % 2 != 0: # route points
                         points = db.to_segment(result[i+3], result[i+4], debug=debug).to_json()
                         points['id'] = id
-                        results.append(ResultInterval(id, start_date, end_date, None))
+                        results.append(ResultInterval(id, start_date, end_date, None, points))
                     else: # stay
                         points = db.to_segment(result[i+3], start_date, debug=debug).to_json()
                         points['id'] = id
-                        results.append(ResultRange(result[i+4], start_date, end_date, None))
-                    
-                    segments.append(points)
+                        results.append(ResultRange(result[i+4], start_date, end_date, None, points))
                     
                 to_show.append(results)
                 results = []
@@ -169,21 +168,21 @@ class QueryManager(object):
                 for item in value:
                     if utils.represent_int(item[2]):
                         id = item[2]
-                        result.append(ResultInterval(id, item[0], item[1], item[3]).to_json())
+                        result.append(ResultInterval(id, item[0], item[1], item[3], item[4]).to_json())
                         routes.append({"start": True, "time":item[0], "location": item[2]})
                         routes.append({"start": False, "time": item[1], "location": item[2]})
                     else:
-                        id = item[2] + str(start_index + i)
-                        result.append(ResultRange(item[2], item[0], item[1], item[3]).to_json())
+                        id = item[2] + str(start_index + i if not loadAll else i)
+                        result.append(ResultRange(item[2], item[0], item[1], item[3], item[4]).to_json())
                         stays.append({"start": True, "time":item[0], "location": item[2]})
                         stays.append({"start": False, "time": item[1], "location": item[2]})
                     
-                results.append({"id": id, "result": result, "render": self.sort_render_data(stays, routes), 'multiple': len(result) > self.currentQuerySize})
+                results.append({"id": id, "result": result, "render": self.sort_render_data(stays, routes), 'multiple': len(result) > self.currentQuerySize, "querySize": self.currentQuerySize})
             i += 1
 
         self.loadMoreId += 1
 
-        return {"results": results, "segments": self.allSegments, "total": len(self.allResults)}
+        return {"results": results, "total": len(self.allResults), "querySize": self.currentQuerySize}
 
     def sort_render_data(self, stays, routes):
         """TODO comments"""
@@ -620,9 +619,10 @@ class ResultRange:
     end_date = None
     type = "range"
     date = None
+    points = []
     render = {}
 
-    def __init__(self, id, start_date, end_date, date):
+    def __init__(self, id, start_date, end_date, date, points):
         now = datetime.datetime.now()
         if date:
             self.date = date
@@ -632,6 +632,7 @@ class ResultRange:
         self.start_date = start_date
         self.end_date = end_date
         self.render = {"start": start_date, "end": end_date, "freq": 1, "location": id}
+        self.points = points
         self.type = "range"
 
     def __repr__(self):
@@ -650,6 +651,7 @@ class ResultRange:
             'start_date': self.start_date, 
             'end_date': self.end_date, 
             'type': self.type,
+            'points': self.points,
             'render': self.render
         }
 
@@ -659,9 +661,10 @@ class ResultInterval:
     end_date = None
     type = "interval"
     date = None
+    points=[]
     render = {}
 
-    def __init__(self, id, start_date, end_date, date):
+    def __init__(self, id, start_date, end_date, date, points):
         now = datetime.datetime.now()
         if date:
             self.date = date
@@ -671,6 +674,7 @@ class ResultInterval:
         self.start_date = start_date
         self.end_date = end_date
         self.render = {"start": start_date, "end": end_date, "freq": 1, "location": id}
+        self.points = points
         self.type = "interval"
 
     def __repr__(self):
@@ -689,6 +693,7 @@ class ResultInterval:
             'start_date': self.start_date, 
             'end_date': self.end_date, 
             'type': self.type,
+            'points': self.points,
             'render': self.render
         }
    
