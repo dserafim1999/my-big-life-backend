@@ -46,7 +46,7 @@ class MainManager(object):
         conn, cur = self.db_connect()
         result = []
         if conn and cur:
-            trips = db.get_trips(cur, self.debug)
+            trips = db.get_canonical_trips(cur, self.debug)
             locations = db.get_canonical_locations(cur, self.debug)
         for val in trips:
             val['points'] = val['points'].to_json()
@@ -59,3 +59,26 @@ class MainManager(object):
         db.dispose(conn, cur)
         return {"trips": [r['points'] for r in trips], "locations": [r['point'] for r in locations]}
 
+    def get_trips(self, latMin, lonMin, latMax, lonMax):
+        conn, cur = self.db_connect()
+        if conn and cur:
+            trips = db.get_trips(cur, latMin, lonMin, latMax, lonMax, self.debug)
+
+        for val in trips:
+            val['points'] = val['points'].to_json()
+            val['points']['id'] = val['id']
+
+        db.dispose(conn, cur)
+        return {"trips": [r['points'] for r in trips]}
+
+    def get_all_trips(self):
+        conn, cur = self.db_connect()
+        if conn and cur:
+            trips = db.get_all_trips(cur, self.debug)
+
+        for val in trips:
+            val['points'] = val['points'].to_json()
+            val['points']['id'] = val['id']
+
+        db.dispose(conn, cur)
+        return {"trips": [r['points'] for r in trips]}

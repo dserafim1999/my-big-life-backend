@@ -45,6 +45,21 @@ def get_trips_and_locations():
     response = jsonify(manager.get_trips_and_locations())
     return set_headers(response)
 
+@app.route('/trips', methods=['GET'])
+def get_trips():
+    latMin = request.args.get('latMin')
+    lonMin = request.args.get('lonMin')
+    latMax = request.args.get('latMax')
+    lonMax = request.args.get('lonMax')
+    
+    response = jsonify(manager.get_trips(latMin, lonMin, latMax, lonMax))
+    return set_headers(response)
+
+@app.route('/allTrips', methods=['GET'])
+def get_all_trips():    
+    response = jsonify(manager.get_all_trips())
+    return set_headers(response)
+
 
 @app.route('/config', methods=['POST'])
 def set_configuration():
