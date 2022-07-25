@@ -51,8 +51,9 @@ def get_trips():
     lonMin = request.args.get('lonMin')
     latMax = request.args.get('latMax')
     lonMax = request.args.get('lonMax')
+    canonical = request.args.get('canonical') == 'true'
     
-    response = jsonify(manager.get_trips(latMin, lonMin, latMax, lonMax))
+    response = jsonify(manager.get_trips(latMin, lonMin, latMax, lonMax, canonical))
     return set_headers(response)
 
 @app.route('/allTrips', methods=['GET'])

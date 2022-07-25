@@ -530,7 +530,7 @@ def get_canonical_locations(cur, debug = False):
     locations = cur.fetchall()
     return [{'id': t[0], 'label': t[1], 'point': to_point(t[2], debug=debug)} for t in locations]
 
-def get_trips(cur, latMin, lonMin, latMax, lonMax, debug = False):
+def get_trips(cur, latMin, lonMin, latMax, lonMax, canonical=False, debug = False):
     """ Gets trips in db
 
     Args:
@@ -539,11 +539,18 @@ def get_trips(cur, latMin, lonMin, latMax, lonMax, debug = False):
         :obj:`list` of :obj:`dict`:
             [{ 'id': 1, 'points': <tracktotrip.Segment> }, ...]
     """
-    cur.execute("""
-        SELECT trip_id, points, timestamps FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
-        """, (latMin, lonMin, latMax, lonMax));
+
+    if canonical:
+        cur.execute("""
+            SELECT canonical_id, points FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
+            """, (latMin, lonMin, latMax, lonMax))
+    else:
+        cur.execute("""
+            SELECT trip_id, points, timestamps FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
+            """, (latMin, lonMin, latMax, lonMax))
+    
     trips = cur.fetchall()
-    return [{'id': t[0], 'points': to_segment(t[1], t[2], debug)} for t in trips]
+    return [{'id': t[0], 'points': to_segment(t[1], None if canonical else t[2], debug)} for t in trips]
 
 def get_all_trips(cur, debug = False):
     """ Gets trips in db
