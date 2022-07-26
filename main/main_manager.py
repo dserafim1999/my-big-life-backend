@@ -3,7 +3,7 @@
 Contains class that orchestrates general features
 """
 import json
-from os.path import expanduser, isfile
+from os.path import join, expanduser, isfile
 from main import db
 from utils import update_dict
 
@@ -82,3 +82,8 @@ class MainManager(object):
 
         db.dispose(conn, cur)
         return {"trips": [r['points'] for r in trips]}
+
+    def upload_file(self, file):
+        f = open(join(expanduser(self.config['input_path']), file['name']), "w")
+        f.write(file["data"])
+        f.close()
