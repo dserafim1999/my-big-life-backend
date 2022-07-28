@@ -5,7 +5,7 @@ Contains class that orchestrates general features
 import json
 from os.path import join, expanduser, isfile
 from main import db
-from utils import update_dict
+from utils import merge_bounding_boxes, update_dict
 
 from main.default_config import CONFIG
 
@@ -18,6 +18,7 @@ class MainManager(object):
     def __init__(self, config_file, debug):
         self.config = dict(CONFIG)
         self.debug = debug
+        self.loadedBoundingBox = [{"lat": 0, "lon": 0}, {"lat": 0, "lon": 0}]
 
         if config_file and isfile(expanduser(config_file)):
             with open(expanduser(config_file), 'r') as config_file:
@@ -61,12 +62,29 @@ class MainManager(object):
 
     def get_trips(self, latMin, lonMin, latMax, lonMax, canonical):
         conn, cur = self.db_connect()
+        self.loadedBoundingBox = [{"lat": latMin, "lon": lonMin}, {"lat": latMax, "lon": lonMax}]
+
         if conn and cur:
-            trips = db.get_trips(cur, latMin, lonMin, latMax, lonMax, canonical, self.debug)
+            trips = db.get_trips(cur, self.loadedBoundingBox, canonical, self.debug)
 
         for val in trips:
             val['points'] = val['points'].to_json()
             val['points']['id'] = val['id']
+
+        db.dispose(conn, cur)
+        return {"trips": [r['points'] for r in trips]}
+
+    def get_more_trips(self, latMin, lonMin, latMax, lonMax, canonical):
+        conn, cur = self.db_connect()
+
+        if conn and cur:
+            trips = db.get_more_trips(cur, [{"lat": latMin, "lon": lonMin}, {"lat": latMax, "lon": lonMax}], self.loadedBoundingBox, canonical, self.debug)
+
+        for val in trips:
+            val['points'] = val['points'].to_json()
+            val['points']['id'] = val['id']
+
+        self.loadedBoundingBox = merge_bounding_boxes([{"lat": latMin, "lon": lonMin}, {"lat": latMax, "lon": lonMax}], self.loadedBoundingBox) 
 
         db.dispose(conn, cur)
         return {"trips": [r['points'] for r in trips]}

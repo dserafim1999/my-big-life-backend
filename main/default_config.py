@@ -16,7 +16,7 @@ CONFIG = {
         'pass': None
     },
     'default_timezone': 0,
-    'trip_annotations': True,
+    'trip_annotations': False,
     'load_more_amount': 10,
     'smoothing': {
         'use': True,

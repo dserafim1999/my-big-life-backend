@@ -56,6 +56,17 @@ def get_trips():
     response = jsonify(manager.get_trips(latMin, lonMin, latMax, lonMax, canonical))
     return set_headers(response)
 
+@app.route('/moreTrips', methods=['GET'])
+def get_more_trips():
+    latMin = request.args.get('latMin')
+    lonMin = request.args.get('lonMin')
+    latMax = request.args.get('latMax')
+    lonMax = request.args.get('lonMax')
+    canonical = request.args.get('canonical') == 'true'
+    
+    response = jsonify(manager.get_more_trips(latMin, lonMin, latMax, lonMax, canonical))
+    return set_headers(response)
+
 @app.route('/uploadFile', methods=['POST'])
 def upload_file():
     payload = request.get_json(force=True)
