@@ -302,6 +302,10 @@ class ProcessingManager(object):
         self.queue = OrderedDict(sorted(queue.items()))
         self.life_queue = lifes
 
+        if len(list(self.queue.items())) == 0:
+            self.current_day = None
+            self.current_step = Step.done
+
     def next_day(self, delete=True):
         """ Advances a day (to next existing one)
 
