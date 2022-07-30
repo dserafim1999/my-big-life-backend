@@ -129,20 +129,24 @@ def load_from_segments_annotated(cur, track, life_content, max_distance, min_sam
             print(('in_loc', end, endLocation, endPoint.lat, endPoint.lon))
         
         if startLocation is not None:
-            if isinstance(startLocation, str):
-                insert_location(cur, startLocation, startPoint, max_distance, min_samples, debug)
+            if isinstance(startLocation, str): 
+                if startLocation != '#?':
+                    insert_location(cur, startLocation, startPoint, max_distance, min_samples, debug)
             else: # is a tuple with (start, end) -> multiplace
-                insert_location(cur, startLocation[0], startPoint, max_distance, min_samples, debug)
-                if endLocation is not None:
+                if startLocation[0] != '#?':
+                    insert_location(cur, startLocation[0], startPoint, max_distance, min_samples, debug)
+                if endLocation is not None and startLocation[1] != '#?':
                     insert_location(cur, startLocation[1], endPoint, max_distance, min_samples, debug)
 
         if endLocation is not None:
             if isinstance(endLocation, str):
-                insert_location(cur, endLocation, endPoint, max_distance, min_samples, debug)
+                if endLocation != '#?':
+                    insert_location(cur, endLocation, endPoint, max_distance, min_samples, debug)
             else: # is a tuple with (start, end) -> multiplace
-                if startLocation is not None:
+                if startLocation is not None and endLocation[0] != '#?':
                     insert_location(cur, endLocation[0], startPoint, max_distance, min_samples, debug)
-                insert_location(cur, endLocation[1], endPoint, max_distance, min_samples, debug)
+                if endLocation[1] != '#?':
+                    insert_location(cur, endLocation[1], endPoint, max_distance, min_samples, debug)
 
     if insert_locs:
         for segment in track.segments:
@@ -162,7 +166,8 @@ def load_from_segments_annotated(cur, track, life_content, max_distance, min_sam
 
     # Insert canonical places
     for place, (lat, lon) in list(life.coordinates.items()):
-        insert_location(cur, place, Point(lat, lon, None, debug), max_distance, min_samples, debug)
+        if isinstance(place, str) and place != '#?':
+            insert_location(cur, place, Point(lat, lon, None, debug), max_distance, min_samples, debug)
 
 
 def load_from_life(cur, content, max_distance, min_samples, debug = False):
@@ -181,7 +186,8 @@ def load_from_life(cur, content, max_distance, min_samples, debug = False):
 
     # Insert canonical places
     for place, (lat, lon) in list(life.coordinates.items()):
-        insert_location(cur, place, Point(lat, lon, None, debug), max_distance, min_samples, debug)
+        if isinstance(place, str) and place != '#?':
+            insert_location(cur, place, Point(lat, lon, None, debug), max_distance, min_samples, debug)
 
     # Insert stays
     for day in life.days:
