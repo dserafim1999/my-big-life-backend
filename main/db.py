@@ -129,20 +129,24 @@ def load_from_segments_annotated(cur, track, life_content, max_distance, min_sam
             print(('in_loc', end, endLocation, endPoint.lat, endPoint.lon))
         
         if startLocation is not None:
-            if isinstance(startLocation, str):
-                insert_location(cur, startLocation, startPoint, max_distance, min_samples, debug)
+            if isinstance(startLocation, str): 
+                if startLocation != '#?':
+                    insert_location(cur, startLocation, startPoint, max_distance, min_samples, debug)
             else: # is a tuple with (start, end) -> multiplace
-                insert_location(cur, startLocation[0], startPoint, max_distance, min_samples, debug)
-                if endLocation is not None:
+                if startLocation[0] != '#?':
+                    insert_location(cur, startLocation[0], startPoint, max_distance, min_samples, debug)
+                if endLocation is not None and startLocation[1] != '#?':
                     insert_location(cur, startLocation[1], endPoint, max_distance, min_samples, debug)
 
         if endLocation is not None:
             if isinstance(endLocation, str):
-                insert_location(cur, endLocation, endPoint, max_distance, min_samples, debug)
+                if endLocation != '#?':
+                    insert_location(cur, endLocation, endPoint, max_distance, min_samples, debug)
             else: # is a tuple with (start, end) -> multiplace
-                if startLocation is not None:
+                if startLocation is not None and endLocation[0] != '#?':
                     insert_location(cur, endLocation[0], startPoint, max_distance, min_samples, debug)
-                insert_location(cur, endLocation[1], endPoint, max_distance, min_samples, debug)
+                if endLocation[1] != '#?':
+                    insert_location(cur, endLocation[1], endPoint, max_distance, min_samples, debug)
 
     if insert_locs:
         for segment in track.segments:
@@ -162,7 +166,8 @@ def load_from_segments_annotated(cur, track, life_content, max_distance, min_sam
 
     # Insert canonical places
     for place, (lat, lon) in list(life.coordinates.items()):
-        insert_location(cur, place, Point(lat, lon, None, debug), max_distance, min_samples, debug)
+        if isinstance(place, str) and place != '#?':
+            insert_location(cur, place, Point(lat, lon, None, debug), max_distance, min_samples, debug)
 
 
 def load_from_life(cur, content, max_distance, min_samples, debug = False):
@@ -181,7 +186,8 @@ def load_from_life(cur, content, max_distance, min_samples, debug = False):
 
     # Insert canonical places
     for place, (lat, lon) in list(life.coordinates.items()):
-        insert_location(cur, place, Point(lat, lon, None, debug), max_distance, min_samples, debug)
+        if isinstance(place, str) and place != '#?':
+            insert_location(cur, place, Point(lat, lon, None, debug), max_distance, min_samples, debug)
 
     # Insert stays
     for day in life.days:
@@ -530,7 +536,68 @@ def get_canonical_locations(cur, debug = False):
     locations = cur.fetchall()
     return [{'id': t[0], 'label': t[1], 'point': to_point(t[2], debug=debug)} for t in locations]
 
-def get_trips(cur, debug = False):
+def get_trips(cur, bounding_box, canonical=False, debug = False):
+    """ Gets trips in db
+
+    Args:
+        cur (:obj:`psycopg2.cursor`)
+    Returns:
+        :obj:`list` of :obj:`dict`:
+            [{ 'id': 1, 'points': <tracktotrip.Segment> }, ...]
+    """
+
+    if canonical:
+        cur.execute("""
+            SELECT canonical_id, points FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
+            """, (bounding_box[0]["lat"], bounding_box[0]["lon"], bounding_box[1]["lat"], bounding_box[1]["lon"]))
+    else:
+        cur.execute("""
+            SELECT trip_id, points, timestamps FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
+            """, (bounding_box[0]["lat"], bounding_box[0]["lon"], bounding_box[1]["lat"], bounding_box[1]["lon"]))
+    
+    trips = cur.fetchall()
+    return [{'id': t[0], 'points': to_segment(t[1], None if canonical else t[2], debug)} for t in trips]
+
+def get_more_trips(cur, bounding_box, loaded_bb, canonical=False, debug = False):
+    """ Gets trips in db that haven't been fetched yet
+
+    Args:
+        cur (:obj:`psycopg2.cursor`)
+    Returns:
+        :obj:`list` of :obj:`dict`:
+            [{ 'id': 1, 'points': <tracktotrip.Segment> }, ...]
+    """
+
+    if canonical:
+        cur.execute("""
+            (SELECT canonical_id, points FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)) 
+            EXCEPT (
+                (SELECT canonical_id, points FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
+                    INTERSECT 
+                (SELECT canonical_id, points FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
+            )
+        """, (  bounding_box[0]["lat"], bounding_box[0]["lon"], bounding_box[1]["lat"], bounding_box[1]["lon"],\
+                loaded_bb[0]["lat"], loaded_bb[0]["lon"], loaded_bb[1]["lat"], loaded_bb[1]["lon"],\
+                bounding_box[0]["lat"], bounding_box[0]["lon"], bounding_box[1]["lat"], bounding_box[1]["lon"]\
+            ))
+    else:
+        cur.execute("""
+            (SELECT trip_id, points, timestamps FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)) 
+            EXCEPT (
+                (SELECT trip_id, points, timestamps FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
+                    INTERSECT 
+                (SELECT trip_id, points, timestamps FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
+            )
+        """, (  bounding_box[0]["lat"], bounding_box[0]["lon"], bounding_box[1]["lat"], bounding_box[1]["lon"],\
+                loaded_bb[0]["lat"], loaded_bb[0]["lon"], loaded_bb[1]["lat"], loaded_bb[1]["lon"],\
+                bounding_box[0]["lat"], bounding_box[0]["lon"], bounding_box[1]["lat"], bounding_box[1]["lon"]\
+            ))
+
+    trips = cur.fetchall()
+    return [{'id': t[0], 'points': to_segment(t[1], None if canonical else t[2], debug)} for t in trips]
+
+
+def get_all_trips(cur, debug = False):
     """ Gets trips in db
 
     Args:

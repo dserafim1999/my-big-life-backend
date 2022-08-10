@@ -289,11 +289,13 @@ class ProcessingManager(object):
             in the input folder
         """
         queue = {}
+        current_day_in_queue = False
 
         gpxs = self.list_gpxs()
         lifes = self.list_lifes()
         for gpx in gpxs:
             day = gpx['date']
+            current_day_in_queue = current_day_in_queue or day == self.current_day
             if day in queue:
                 queue[day].append(gpx)
             else:
@@ -301,6 +303,13 @@ class ProcessingManager(object):
 
         self.queue = OrderedDict(sorted(queue.items()))
         self.life_queue = lifes
+
+        if len(list(self.queue.items())) == 0:
+            self.current_day = None
+            self.current_step = Step.done
+        elif not current_day_in_queue:
+            self.current_day = list(self.queue.items())[0][0]
+            self.change_day(self.current_day)
 
     def next_day(self, delete=True):
         """ Advances a day (to next existing one)
