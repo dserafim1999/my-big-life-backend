@@ -101,6 +101,18 @@ def get_configuration():
     """
     return set_headers(jsonify(manager.config))
 
+@app.route('/lifeFromDay', methods=['POST'])
+def get_life_from_day():
+    """ 
+    TODO
+    Returns:
+        :obj:`flask.response`
+    """
+    payload = request.get_json(force=True)
+    response = jsonify(manager.get_life_from_day(payload))
+
+    return set_headers(response)
+
 # Track Processing
 
 @app.route('/process/previous', methods=['GET'])

@@ -4,6 +4,7 @@ Contains class that orchestrates general features
 """
 import json
 from os.path import join, expanduser, isfile
+from life.life import Life
 from main import db
 from utils import merge_bounding_boxes, update_dict
 
@@ -100,6 +101,15 @@ class MainManager(object):
 
         db.dispose(conn, cur)
         return {"trips": [r['points'] for r in trips]}
+
+    def get_life_from_day(self, data):
+        f = open(join(expanduser(self.config['life_all'])), "r")
+        raw_life = f.read()
+
+        life = Life()
+        life.from_string(raw_life.split('\n'))
+
+        return repr(life.day_at_date(data["date"]))
 
     def upload_file(self, file):
         f = open(join(expanduser(self.config['input_path']), file['name']), "w")
