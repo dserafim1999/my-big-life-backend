@@ -933,7 +933,7 @@ class ProcessingManager(object):
         modes = classify(self.clf, points, self.config['transportation']['min_time'], debug=self.debug)
         return modes['classification']
 
-    def remove_day(self, day):
+    def dismiss_day(self, day):
         existing_days = list(self.queue.keys())
         if day in existing_days:
             if day == self.current_day:
@@ -946,6 +946,11 @@ class ProcessingManager(object):
                     self.history = []
             else:
                 del self.queue[day]
+
+    def remove_day(self, files):
+        for file in files:
+            self.dismiss_day(file["date"])
+            remove(file["path"])
 
     def copy_day_to_input(self, day):
         day_gpx_path = join(expanduser(self.config['output_path']), day + '.gpx')

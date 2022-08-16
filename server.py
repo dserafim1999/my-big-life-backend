@@ -42,11 +42,23 @@ query_manager = QueryManager(args.config, args.debug)
 
 @app.route('/tripsLocations', methods=['GET'])
 def get_trips_and_locations():
+    """ 
+    TODO docs
+    Returns:
+        :obj:`flask.response`
+    """
+
     response = jsonify(manager.get_trips_and_locations())
     return set_headers(response)
 
 @app.route('/trips', methods=['GET'])
 def get_trips():
+    """ 
+    TODO docs
+    Returns:
+        :obj:`flask.response`
+    """
+
     latMin = request.args.get('latMin')
     lonMin = request.args.get('lonMin')
     latMax = request.args.get('latMax')
@@ -58,6 +70,12 @@ def get_trips():
 
 @app.route('/moreTrips', methods=['GET'])
 def get_more_trips():
+    """ 
+    TODO docs
+    Returns:
+        :obj:`flask.response`
+    """
+
     latMin = request.args.get('latMin')
     lonMin = request.args.get('lonMin')
     latMax = request.args.get('latMax')
@@ -69,12 +87,24 @@ def get_more_trips():
 
 @app.route('/uploadFile', methods=['POST'])
 def upload_file():
+    """ 
+    TODO docs
+    Returns:
+        :obj:`flask.response`
+    """
+
     payload = request.get_json(force=True)
     manager.upload_file(payload)
     return send_state()
 
 @app.route('/allTrips', methods=['GET'])
 def get_all_trips():    
+    """ 
+    TODO docs
+    Returns:
+        :obj:`flask.response`
+    """
+    
     response = jsonify(manager.get_all_trips())
     return set_headers(response)
 
@@ -104,7 +134,7 @@ def get_configuration():
 @app.route('/lifeFromDay', methods=['POST'])
 def get_life_from_day():
     """ 
-    TODO
+    TODO docs
     Returns:
         :obj:`flask.response`
     """
@@ -112,6 +142,7 @@ def get_life_from_day():
     response = jsonify(manager.get_life_from_day(payload))
 
     return set_headers(response)
+
 
 # Track Processing
 
@@ -237,10 +268,16 @@ def get_transportation_suggestions():
     response = jsonify(processing_manager.get_transportation_suggestions(points))
     return set_headers(response)
 
+@app.route('/process/dismissDay', methods=['POST'])
+def dismiss_day():
+    payload = request.get_json(force=True)
+    processing_manager.dismiss_day(payload["day"])
+    return send_state()
+
 @app.route('/process/removeDay', methods=['POST'])
 def remove_day():
     payload = request.get_json(force=True)
-    processing_manager.remove_day(payload["day"])
+    processing_manager.remove_day(payload["files"])
     return send_state()
 
 @app.route('/process/skipDay', methods=['POST'])
