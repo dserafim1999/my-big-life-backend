@@ -131,11 +131,14 @@ class Life:
                 return None
         return None
 
-    
-    # TODO: Add days programatically (not from file)
-    # TODO: Output .life file (to_file method)
+    def update_day_from_string(self, date, content):
+        """Updates day with content from a LIFE string"""
+        for i in range(len(self.days)):
+            if self.days[i].date == date:
+                self.days[i] = self.from_string(content, replace=True)
 
-    def from_string(self, content):
+
+    def from_string(self, content, replace=False):
         """Loads from a string"""
         if type(content) is str:
             content = content.replace('\r\n', '\n').split('\n')
@@ -152,7 +155,7 @@ class Life:
                 if len(line)==0:
                     pass
                 elif line[:2]=="--":
-                    if curday:
+                    if curday and not replace:
                         self.days.append(curday)
                     curdate = line[2:].strip()
                     curday = Day(curdate)
@@ -173,7 +176,10 @@ class Life:
             except:
                 raise TypeError("Failed to parse line %d: '%s'" % (linecount, line))
         if curday:
-            self.days.append(curday)
+            if replace:
+                return curday
+            else:
+                self.days.append(curday)
 
     def from_file(self,filename, recursive=False):
         """Populates instance from a .life file"""
@@ -217,6 +223,11 @@ class Life:
             del(self.curdate)
             del(self.curtimezone)            
 
+    def to_file(self, path):
+        """Creates a file in the LIFE format"""
+        f = open(path, "w")
+        f.write(repr(self))
+        f.close()
 
     def parseMeta(self, line, date):        
         """Parses meta-commands ("@<command>")"""
@@ -287,6 +298,13 @@ class Life:
         day.update_placenames(changes)
         return day
 
+    def __repr__(self):
+        """Converts LIFE object to LIFE fromat string"""
+        days = []
+        for day in self.days:
+            days.append(repr(day) + '\n')
+        
+        return ''.join(days)
 
     #CHECK IF BROKEN! NOW A PLACE CAN ONLY HAVE ONE SUPERPLACE
     def subplaces_of(self,place, recursive = True):

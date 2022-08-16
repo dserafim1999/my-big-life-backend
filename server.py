@@ -248,6 +248,11 @@ def skip_day():
     processing_manager.next_day(delete=False)
     return send_state()
 
+@app.route('/process/copyDayToInput', methods=['POST'])
+def copy_day_to_input():
+    payload = request.get_json(force=True)
+    processing_manager.copy_day_to_input(payload["date"])
+    return send_state()
 
 # Queries 
 

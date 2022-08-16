@@ -610,5 +610,17 @@ def get_all_trips(cur, debug = False):
     trips = cur.fetchall()
     return [{'id': t[0], 'points': to_segment(t[1], t[2], debug)} for t in trips]
 
+def remove_tracks_from_day(cur, date, debug= False):
+    '''
+    TODO docs
+    '''
+    cur.execute("""
+        delete from trips where start_date::date = %s;
+        delete from stays where start_date::date = %s;
+    """, (date, date)) 
+
 def execute_query(cur, query, debug = False):
+    '''
+    TODO docs
+    '''
     cur.execute(query)

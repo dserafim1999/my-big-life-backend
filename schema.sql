@@ -62,6 +62,6 @@ CREATE TABLE IF NOT EXISTS canonical_trips (
 );
 
 CREATE TABLE IF NOT EXISTS canonical_trips_relations (
-  canonical_trip SERIAL REFERENCES canonical_trips(canonical_id),
-  trip SERIAL REFERENCES trips(trip_id)
+  canonical_trip SERIAL REFERENCES canonical_trips(canonical_id) ON DELETE CASCADE,
+  trip SERIAL REFERENCES trips(trip_id) ON DELETE CASCADE
   );
