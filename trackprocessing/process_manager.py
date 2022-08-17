@@ -250,7 +250,9 @@ class ProcessingManager(object):
         Returns:
             :obj:`ProcessingManager`: self
         """
+
         queue = self.list_gpxs()
+        
         if len(queue) > 0:
             self.current_step = Step.preview
             self.load_days()
@@ -322,6 +324,7 @@ class ProcessingManager(object):
             delete (bool, optional): True to delete day from queue, NOT from input folder.
                 Defaults to true
         """
+        
         if delete:
             del self.queue[self.current_day]
         existing_days = list(self.queue.keys())
@@ -331,6 +334,7 @@ class ProcessingManager(object):
             existing_days.remove(self.current_day)
         else:
             next_day = 0
+            
 
         if len(existing_days) > 0:
             self.change_day(existing_days[next_day])
@@ -341,7 +345,6 @@ class ProcessingManager(object):
         """ Reloads queue and sets the current day as the oldest one
         """
         self.reload_queue()
-        self.next_day(delete=False)
 
     def restore(self):
         """ Backs down a pass
