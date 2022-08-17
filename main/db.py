@@ -610,7 +610,7 @@ def get_all_trips(cur, debug = False):
     trips = cur.fetchall()
     return [{'id': t[0], 'points': to_segment(t[1], t[2], debug)} for t in trips]
 
-def remove_tracks_from_day(cur, date, debug= False):
+def remove_trips_from_day(cur, date, debug= False):
     '''
     TODO docs
     '''
@@ -618,6 +618,30 @@ def remove_tracks_from_day(cur, date, debug= False):
         delete from trips where start_date::date = %s;
         delete from stays where start_date::date = %s;
     """, (date, date)) 
+
+def remove_canonical_trips_from_day(cur, date, debug=False):
+    '''
+    TODO docs
+    Removes canonical trips that are only associated to one track of a certain day
+    '''
+    
+    cur.execute(f"""
+        DELETE FROM canonical_trips c WHERE c.canonical_id IN (
+            SELECT canonical_id FROM (
+                SELECT canonical_trip as canonical_id, trip as trip_id FROM
+                    canonical_trips_relations AS a 
+                INNER JOIN
+                    (
+                        SELECT canonical_trip FROM canonical_trips_relations
+                        GROUP BY canonical_trip HAVING COUNT(canonical_trip) = 1
+                    ) AS b
+                USING (canonical_trip)
+            ) relations INNER JOIN (
+                SELECT trip_id FROM trips WHERE start_date::date = '{date}'
+            ) trips USING (trip_id)
+        )
+    """)
+
 
 def execute_query(cur, query, debug = False):
     '''

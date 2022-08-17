@@ -661,7 +661,7 @@ class ProcessingManager(object):
         # To LIFE
         if self.config['life_path']:
             name = '.'.join(track.name.split('.')[:-1])
-            save_to_file(join(expanduser(self.config['life_path']), name), life)
+            save_to_file(join(expanduser(self.config['life_path']), name + '.life'), life)
 
             if self.config['life_all']:
                 life_all_file = expanduser(self.config['life_all'])
@@ -685,7 +685,7 @@ class ProcessingManager(object):
             if is_edit:
                 if self.debug:
                     print(f"updating day: {self.current_day}")
-                db.remove_tracks_from_day(cur, self.current_day, self.debug)
+                db.remove_trips_from_day(cur, self.current_day, self.debug)
 
             db.load_from_segments_annotated(
                 cur,
@@ -956,6 +956,7 @@ class ProcessingManager(object):
             remove(file["path"])
 
     def copy_day_to_input(self, day):
+        #TODO take output name format into consideration (can be changed in config)
         day_gpx_path = join(expanduser(self.config['output_path']), day + '.gpx')
         input_path = join(expanduser(self.config['input_path']), day + '.gpx')
         copyfile(day_gpx_path, input_path)

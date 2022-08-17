@@ -139,10 +139,22 @@ def get_life_from_day():
         :obj:`flask.response`
     """
     payload = request.get_json(force=True)
-    response = jsonify(manager.get_life_from_day(payload))
+    response = jsonify(manager.get_life_from_day(payload["date"]))
 
     return set_headers(response)
 
+@app.route('/deleteDay', methods=['POST'])
+def delete_day():
+    """ 
+    TODO docs
+    Returns:
+        :obj:`flask.response`
+    """
+    payload = request.get_json(force=True)
+    
+    manager.delete_day(payload["date"])
+
+    return send_state()
 
 # Track Processing
 

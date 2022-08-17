@@ -137,6 +137,13 @@ class Life:
             if self.days[i].date == date:
                 self.days[i] = self.from_string(content, replace=True)
 
+    def remove_day(self, date):
+        """Removes day from LIFE"""
+        for i in range(len(self.days)):
+            if self.days[i].date == date:
+                self.days.pop(i)
+                return
+
 
     def from_string(self, content, replace=False):
         """Loads from a string"""
