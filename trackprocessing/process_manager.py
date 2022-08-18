@@ -11,14 +11,14 @@ from collections import OrderedDict
 import tracktotrip as tt
 from tracktotrip.utils import pairwise, estimate_meters_to_deg
 from tracktotrip.location import infer_location
-from tracktotrip.classifier import Classifier
 from tracktotrip.learn_trip import learn_trip, complete_trip
-from tracktotrip.transportation_mode import learn_transportation_mode, classify
 from main import db
 from life.life import Life
 from utils import update_dict
 
 from main.default_config import CONFIG
+
+#TODO docs
 
 def inside(to_find, modes, debug = False):
     for elm in to_find:
@@ -45,33 +45,6 @@ def find_index_point(track, time, debug = False):
                 return (j, i)
             i = i + 1
     return None, None
-
-def apply_transportation_mode_to(track, life_content, transportation_modes, debug = False):
-    life = Life(debug=debug)
-    life.from_string(life_content.split('\n'))
-
-    for segment in track.segments:
-        segment.transportation_modes = []
-
-    for day in life.days:
-        for span in day.spans:
-            has = inside(span.tags, transportation_modes, debug)
-            if has:
-                start_time = db.span_date_to_datetime(span.day, span.start, debug)
-                end_time = db.span_date_to_datetime(span.day, span.end, debug)
-
-                start_segment, start_index = find_index_point(track, start_time)
-                end_segment, end_index = find_index_point(track, end_time)
-                if start_segment is not None:
-                    if end_index is None or end_segment != start_segment:
-                        end_index = len(track.segments[start_segment].points) - 1
-
-                    track.segments[start_segment].transportation_modes.append({
-                        'label': has,
-                        'from': start_index,
-                        'to': end_index
-                        })
-
 
 def save_to_file(path, content, mode="w"):
     """ Saves content to file
@@ -194,12 +167,6 @@ class ProcessingManager(object):
             with open(expanduser(config_file), 'r') as config_file:
                 config = json.loads(config_file.read())
                 update_dict(self.config, config)
-
-        clf_path = self.config['transportation']['classifier_path']
-        if clf_path:
-            self.clf = Classifier.load_from_file(open(expanduser(clf_path), 'r'))
-        else:
-            self.clf = Classifier(debug=self.debug)
 
         self.is_bulk_processing = False
         self.queue = {}
@@ -577,7 +544,7 @@ class ProcessingManager(object):
         return track
 
     def adjust_to_annotate(self, track):
-        """ Extracts location and transportation modes
+        """ Extracts location from track
 
         Args:
             track (:obj:`tracktotrip.Track`)
@@ -929,12 +896,6 @@ class ProcessingManager(object):
             val['points']['label'] = val['label']
         db.dispose(conn, cur)
         return [r['points'] for r in result]
-
-    def get_transportation_suggestions(self, points):
-        segment = tt.Segment(points, debug=self.debug).compute_metrics()
-        points = segment.points
-        modes = classify(self.clf, points, self.config['transportation']['min_time'], debug=self.debug)
-        return modes['classification']
 
     def dismiss_day(self, day):
         existing_days = list(self.queue.keys())

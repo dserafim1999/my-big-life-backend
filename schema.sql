@@ -27,21 +27,6 @@ CREATE TABLE IF NOT EXISTS trips (
   timestamps TIMESTAMP WITHOUT TIME ZONE[] NULL
 );
 
-CREATE TABLE IF NOT EXISTS trips_transportation_modes (
-  mode_id SERIAL PRIMARY KEY,
-  trip_id SERIAL REFERENCES trips(trip_id) NOT NULL,
-
-  label TEXT NOT NULL,
-
-  start_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-  end_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-
-  -- Indexes of Trips(point/timestamp)
-  start_index INTEGER NOT NULL,
-  end_index INTEGER NOT NULL,
-  bounds geography(POLYGONZ, 4326) NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS stays (
   stay_id SERIAL PRIMARY KEY,
   -- trip_id SERIAL REFERENCES trips(trip_id),

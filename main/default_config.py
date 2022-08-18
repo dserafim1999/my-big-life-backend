@@ -46,12 +46,6 @@ CONFIG = {
         'foursquare_client_id': '',
         'foursquare_client_secret': ''
     },
-    'transportation': {
-        'use': True,
-        'remove_stops': False,
-        'min_time': 60,
-        'classifier_path': None
-    },
     'trip_learning': {
         'use': True,
         'epsilon': 0.0
