@@ -42,11 +42,23 @@ query_manager = QueryManager(args.config, args.debug)
 
 @app.route('/tripsLocations', methods=['GET'])
 def get_trips_and_locations():
+    """ 
+    TODO docs
+    Returns:
+        :obj:`flask.response`
+    """
+
     response = jsonify(manager.get_trips_and_locations())
     return set_headers(response)
 
 @app.route('/trips', methods=['GET'])
 def get_trips():
+    """ 
+    TODO docs
+    Returns:
+        :obj:`flask.response`
+    """
+
     latMin = request.args.get('latMin')
     lonMin = request.args.get('lonMin')
     latMax = request.args.get('latMax')
@@ -58,6 +70,12 @@ def get_trips():
 
 @app.route('/moreTrips', methods=['GET'])
 def get_more_trips():
+    """ 
+    TODO docs
+    Returns:
+        :obj:`flask.response`
+    """
+
     latMin = request.args.get('latMin')
     lonMin = request.args.get('lonMin')
     latMax = request.args.get('latMax')
@@ -69,12 +87,24 @@ def get_more_trips():
 
 @app.route('/uploadFile', methods=['POST'])
 def upload_file():
+    """ 
+    TODO docs
+    Returns:
+        :obj:`flask.response`
+    """
+
     payload = request.get_json(force=True)
     manager.upload_file(payload)
     return send_state()
 
 @app.route('/allTrips', methods=['GET'])
 def get_all_trips():    
+    """ 
+    TODO docs
+    Returns:
+        :obj:`flask.response`
+    """
+    
     response = jsonify(manager.get_all_trips())
     return set_headers(response)
 
@@ -100,6 +130,31 @@ def get_configuration():
         :obj:`flask.response`
     """
     return set_headers(jsonify(manager.config))
+
+@app.route('/lifeFromDay', methods=['POST'])
+def get_life_from_day():
+    """ 
+    TODO docs
+    Returns:
+        :obj:`flask.response`
+    """
+    payload = request.get_json(force=True)
+    response = jsonify(manager.get_life_from_day(payload["date"]))
+
+    return set_headers(response)
+
+@app.route('/deleteDay', methods=['POST'])
+def delete_day():
+    """ 
+    TODO docs
+    Returns:
+        :obj:`flask.response`
+    """
+    payload = request.get_json(force=True)
+    
+    manager.delete_day(payload["date"])
+
+    return send_state()
 
 # Track Processing
 
@@ -225,10 +280,16 @@ def get_transportation_suggestions():
     response = jsonify(processing_manager.get_transportation_suggestions(points))
     return set_headers(response)
 
+@app.route('/process/dismissDay', methods=['POST'])
+def dismiss_day():
+    payload = request.get_json(force=True)
+    processing_manager.dismiss_day(payload["day"])
+    return send_state()
+
 @app.route('/process/removeDay', methods=['POST'])
 def remove_day():
     payload = request.get_json(force=True)
-    processing_manager.remove_day(payload["day"])
+    processing_manager.remove_day(payload["files"])
     return send_state()
 
 @app.route('/process/skipDay', methods=['POST'])
@@ -236,6 +297,11 @@ def skip_day():
     processing_manager.next_day(delete=False)
     return send_state()
 
+@app.route('/process/copyDayToInput', methods=['POST'])
+def copy_day_to_input():
+    payload = request.get_json(force=True)
+    processing_manager.copy_day_to_input(payload["date"])
+    return send_state()
 
 # Queries 
 

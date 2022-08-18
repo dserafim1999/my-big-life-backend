@@ -4,7 +4,7 @@ Contains class that orchestrates processing
 """
 import re
 import json
-from os import listdir, stat, rename
+from os import listdir, stat, rename, replace, remove
 from shutil import copyfile
 from os.path import join, expanduser, isfile
 from collections import OrderedDict
@@ -81,6 +81,7 @@ def save_to_file(path, content, mode="w"):
         content (str): content to write to file
         mode (str, optional): mode to write, defaults to w
     """
+
     with open(path, mode) as dest_file:
         dest_file.write(content)
 
@@ -101,6 +102,7 @@ def predict_start_date(filename, debug = False):
             date = result[1]
         else:
             date = result[0]
+
         return tt.utils.isostr_to_datetime(date, debug)
 
 def file_details(base_path, filepath, debug = False):
@@ -126,6 +128,7 @@ def file_details(base_path, filepath, debug = False):
     (_, _, _, _, _, _, size, _, _, _) = stat(complete_path)
 
     date = predict_start_date(complete_path, debug)
+
     return {
         'name': filepath,
         'path': complete_path,
@@ -247,7 +250,9 @@ class ProcessingManager(object):
         Returns:
             :obj:`ProcessingManager`: self
         """
+
         queue = self.list_gpxs()
+        
         if len(queue) > 0:
             self.current_step = Step.preview
             self.load_days()
@@ -265,6 +270,7 @@ class ProcessingManager(object):
         Args:
             day (:obj:`datetime.date`): Only loads if it's an existing key in queue
         """
+
         if day in list(self.queue.keys()):
             key_to_use = day
             gpxs_to_use = self.queue[key_to_use]
@@ -318,6 +324,7 @@ class ProcessingManager(object):
             delete (bool, optional): True to delete day from queue, NOT from input folder.
                 Defaults to true
         """
+        
         if delete:
             del self.queue[self.current_day]
         existing_days = list(self.queue.keys())
@@ -327,6 +334,7 @@ class ProcessingManager(object):
             existing_days.remove(self.current_day)
         else:
             next_day = 0
+            
 
         if len(existing_days) > 0:
             self.change_day(existing_days[next_day])
@@ -337,7 +345,6 @@ class ProcessingManager(object):
         """ Reloads queue and sets the current day as the oldest one
         """
         self.reload_queue()
-        self.next_day(delete=False)
 
     def restore(self):
         """ Backs down a pass
@@ -377,7 +384,7 @@ class ProcessingManager(object):
             result = self.adjust_to_annotate(track)
         elif step == Step.annotate:
             if not life or len(life) == 0:
-                life = track.to_life()
+                life = track.to_life(self.config["trip_annotations"])
             return self.annotate_to_next(track, life)
         else:
             return None
@@ -608,11 +615,6 @@ class ProcessingManager(object):
             limit=c_loc['limit']
         )
 
-        # track.infer_transportation_mode(
-        #     self.clf,
-        #     config['transportation']['min_time']
-        # )
-
         db.dispose(conn, cur)
 
         return track
@@ -648,31 +650,42 @@ class ProcessingManager(object):
 
         if not track.name or len(track.name) == 0:
             track.name = track.generate_name(self.config['trip_name_format'])
+        
+        output_path = join(expanduser(self.config['output_path']), track.name)
+        is_edit = isfile(output_path)
 
         # Export trip to GPX
         if self.config['output_path']:
-            save_to_file(join(expanduser(self.config['output_path']), track.name), track.to_gpx())
-
-        # if not self.is_bulk_processing:
-        #     apply_transportation_mode_to(track, life, set(self.clf.labels.classes_), self.debug)
-        #     learn_transportation_mode(track, self.clf)
-        #     with open(self.config['transportation']['classifier_path'], 'w') as classifier_file:
-        #         self.clf.save_to_file(classifier_file)
+            save_to_file(output_path, track.to_gpx())
 
         # To LIFE
         if self.config['life_path']:
             name = '.'.join(track.name.split('.')[:-1])
-            save_to_file(join(expanduser(self.config['life_path']), name), life)
+            save_to_file(join(expanduser(self.config['life_path']), name + '.life'), life)
 
             if self.config['life_all']:
                 life_all_file = expanduser(self.config['life_all'])
             else:
                 life_all_file = join(expanduser(self.config['life_path']), 'all.life')
-            save_to_file(life_all_file, "\n\n%s" % life, mode='a+')
+
+            if is_edit:
+                all_lifes = open(life_all_file, 'r').read()
+                lifes = Life()
+                lifes.from_string(all_lifes)
+                life_date = self.current_day.replace('-','_')
+
+                lifes.update_day_from_string(life_date, life)
+                save_to_file(life_all_file, repr(lifes))
+            else:
+                save_to_file(life_all_file, "\n\n%s" % life, mode='a+')
 
         conn, cur = self.db_connect()
 
         if conn and cur:
+            if is_edit:
+                if self.debug:
+                    print(f"updating day: {self.current_day}")
+                db.remove_trips_from_day(cur, self.current_day, self.debug)
 
             db.load_from_segments_annotated(
                 cur,
@@ -749,7 +762,11 @@ class ProcessingManager(object):
             for gpx in self.queue[self.current_day]:
                 from_path = gpx['path']
                 to_path = join(expanduser(self.config['backup_path']), gpx['name'])
-                rename(from_path, to_path)
+                
+                if isfile(to_path):
+                    replace(from_path, to_path)
+                else:
+                    rename(from_path, to_path)
 
         self.next_day()
 
@@ -919,7 +936,7 @@ class ProcessingManager(object):
         modes = classify(self.clf, points, self.config['transportation']['min_time'], debug=self.debug)
         return modes['classification']
 
-    def remove_day(self, day):
+    def dismiss_day(self, day):
         existing_days = list(self.queue.keys())
         if day in existing_days:
             if day == self.current_day:
@@ -932,4 +949,22 @@ class ProcessingManager(object):
                     self.history = []
             else:
                 del self.queue[day]
+
+    def remove_day(self, files):
+        for file in files:
+            self.dismiss_day(file["date"])
+            remove(file["path"])
+
+    def copy_day_to_input(self, day):
+        #TODO take output name format into consideration (can be changed in config)
+        day_gpx_path = join(expanduser(self.config['output_path']), day + '.gpx')
+        input_path = join(expanduser(self.config['input_path']), day + '.gpx')
+        copyfile(day_gpx_path, input_path)
+        
+        self.reload_queue()
+        self.change_day(day)
+        
+        
+        
+        
 
