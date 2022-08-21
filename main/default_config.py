@@ -20,6 +20,7 @@ CONFIG = {
     'bulk_uses_processing': True,
     'load_more_amount': 10,
     'trip_name_format': '%Y-%m-%d',
+    'multiple_gpxs_for_day': False,
     'smoothing': {
         'use': True,
         'algorithm': 'inverse',
@@ -37,7 +38,7 @@ CONFIG = {
         'eps': 0.000015
     },
     'location': {
-        'use': True,
+        'use': False,
         'max_distance': 20,
         'min_samples': 2,
         'limit': 5,

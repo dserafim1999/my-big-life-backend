@@ -4,6 +4,7 @@ Contains class that orchestrates processing
 """
 import re
 import json
+import glob 
 from os import listdir, stat, rename, replace, remove
 from shutil import copyfile
 from os.path import join, expanduser, isfile
@@ -618,12 +619,23 @@ class ProcessingManager(object):
         if not track.name or len(track.name) == 0:
             track.name = track.generate_name(self.config['trip_name_format'])
         
-        output_path = join(expanduser(self.config['output_path']), track.name)
-        is_edit = isfile(output_path)
+        # Is editing if a file exists in output with the day's date
+        output_files = glob.glob(self.config['output_path'] + f'{track.name}*')
+        is_edit = len(output_files) > 0
 
         # Export trip to GPX
         if self.config['output_path']:
-            save_to_file(output_path, track.to_gpx())
+            if self.config['multiple_gpxs_for_day']:
+                i = 1
+                for segment in track.segments:
+                    seg = tt.Track('', [segment], debug=self.debug)
+                    name = track.name.split('.')[0] 
+                    output_path = join(expanduser(self.config['output_path']), name + f'_{i}.gpx')
+                    i += 1
+                    save_to_file(output_path, seg.to_gpx())
+            else:
+                output_path = join(expanduser(self.config['output_path']), track.name)
+                save_to_file(output_path, track.to_gpx())
 
         # To LIFE
         if self.config['life_path']:
@@ -918,9 +930,13 @@ class ProcessingManager(object):
 
     def copy_day_to_input(self, day):
         #TODO take output name format into consideration (can be changed in config)
-        day_gpx_path = join(expanduser(self.config['output_path']), day + '.gpx')
-        input_path = join(expanduser(self.config['input_path']), day + '.gpx')
-        copyfile(day_gpx_path, input_path)
+
+        # Get all files with day's date
+        output_files = glob.glob(self.config['output_path'] + f'{day}*')
+
+        for day_gpx_path in output_files:
+            file_name = day_gpx_path.replace(expanduser(self.config['output_path']), '') 
+            copyfile(day_gpx_path, join(expanduser(self.config['input_path']), file_name))
         
         self.reload_queue()
         self.change_day(day)
