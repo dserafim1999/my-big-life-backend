@@ -19,6 +19,7 @@ CONFIG = {
     'trip_annotations': False,
     'bulk_uses_processing': True,
     'load_more_amount': 10,
+    'trip_name_format': '%Y-%m-%d',
     'smoothing': {
         'use': True,
         'algorithm': 'inverse',
@@ -46,9 +47,4 @@ CONFIG = {
         'foursquare_client_id': '',
         'foursquare_client_secret': ''
     },
-    'trip_learning': {
-        'use': True,
-        'epsilon': 0.0
-    },
-    'trip_name_format': '%Y-%m-%d'
 }
