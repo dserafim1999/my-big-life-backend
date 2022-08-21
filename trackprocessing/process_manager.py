@@ -574,10 +574,13 @@ class ProcessingManager(object):
             else:
                 return []
 
+        # Does not use APIs to infer location in annotate step
         track.infer_location(
             get_locations,
             max_distance=c_loc['max_distance'],
+            use_google=False,
             google_key=c_loc['google_key'],
+            use_foursquare=False,
             foursquare_client_id=c_loc['foursquare_client_id'],
             foursquare_client_secret=c_loc['foursquare_client_secret'],
             limit=c_loc['limit']
@@ -877,7 +880,9 @@ class ProcessingManager(object):
             point,
             get_locations,
             max_distance=c_loc['max_distance'],
+            use_google=c_loc['use'] and c_loc['use_google'],
             google_key=c_loc['google_key'],
+            use_foursquare=c_loc['use'] and c_loc['use_foursquare'],
             foursquare_client_id=c_loc['foursquare_client_id'],
             foursquare_client_secret=c_loc['foursquare_client_secret'],
             limit=c_loc['limit'],
