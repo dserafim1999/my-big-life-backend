@@ -40,6 +40,7 @@ CONFIG = {
     'location': {
         'use': True,
         'max_distance': 20,
+        'min_samples': 2,
         'limit': 5,
         'use_google': True,
         'google_key': '',

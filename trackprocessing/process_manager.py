@@ -448,7 +448,7 @@ class ProcessingManager(object):
         total_num_days = len(list(self.queue.values()))
         self.is_bulk_processing = True
 
-        all_lifes = [open(expanduser(join(self.config['input_path'], f)), 'r').read() for f in self.life_queue]
+        all_lifes = [open(expanduser(join(self.config['input_path'], f)), 'r', encoding='utf8').read() for f in self.life_queue]
         all_lifes = '\n'.join(all_lifes)
 
         lifes = Life()
@@ -483,7 +483,7 @@ class ProcessingManager(object):
         
         self.is_bulk_processing = True
         
-        all_lifes = [open(expanduser(join(self.config['input_path'], f)), 'r').read() for f in self.life_queue]
+        all_lifes = [open(expanduser(join(self.config['input_path'], f)), 'r', encoding='utf8').read() for f in self.life_queue]
         all_lifes = '\n'.join(all_lifes)
 
         lifes = Life()
