@@ -4,6 +4,7 @@ Contains class that orchestrates processing
 """
 import re
 import json
+import glob 
 from os import listdir, stat, rename, replace, remove
 from shutil import copyfile
 from os.path import join, expanduser, isfile
@@ -11,14 +12,14 @@ from collections import OrderedDict
 import tracktotrip as tt
 from tracktotrip.utils import pairwise, estimate_meters_to_deg
 from tracktotrip.location import infer_location
-from tracktotrip.classifier import Classifier
 from tracktotrip.learn_trip import learn_trip, complete_trip
-from tracktotrip.transportation_mode import learn_transportation_mode, classify
 from main import db
 from life.life import Life
 from utils import update_dict
 
 from main.default_config import CONFIG
+
+#TODO docs
 
 def inside(to_find, modes, debug = False):
     for elm in to_find:
@@ -45,33 +46,6 @@ def find_index_point(track, time, debug = False):
                 return (j, i)
             i = i + 1
     return None, None
-
-def apply_transportation_mode_to(track, life_content, transportation_modes, debug = False):
-    life = Life(debug=debug)
-    life.from_string(life_content.split('\n'))
-
-    for segment in track.segments:
-        segment.transportation_modes = []
-
-    for day in life.days:
-        for span in day.spans:
-            has = inside(span.tags, transportation_modes, debug)
-            if has:
-                start_time = db.span_date_to_datetime(span.day, span.start, debug)
-                end_time = db.span_date_to_datetime(span.day, span.end, debug)
-
-                start_segment, start_index = find_index_point(track, start_time)
-                end_segment, end_index = find_index_point(track, end_time)
-                if start_segment is not None:
-                    if end_index is None or end_segment != start_segment:
-                        end_index = len(track.segments[start_segment].points) - 1
-
-                    track.segments[start_segment].transportation_modes.append({
-                        'label': has,
-                        'from': start_index,
-                        'to': end_index
-                        })
-
 
 def save_to_file(path, content, mode="w"):
     """ Saves content to file
@@ -194,12 +168,6 @@ class ProcessingManager(object):
             with open(expanduser(config_file), 'r') as config_file:
                 config = json.loads(config_file.read())
                 update_dict(self.config, config)
-
-        clf_path = self.config['transportation']['classifier_path']
-        if clf_path:
-            self.clf = Classifier.load_from_file(open(expanduser(clf_path), 'r'))
-        else:
-            self.clf = Classifier(debug=self.debug)
 
         self.is_bulk_processing = False
         self.queue = {}
@@ -480,7 +448,7 @@ class ProcessingManager(object):
         total_num_days = len(list(self.queue.values()))
         self.is_bulk_processing = True
 
-        all_lifes = [open(expanduser(join(self.config['input_path'], f)), 'r').read() for f in self.life_queue]
+        all_lifes = [open(expanduser(join(self.config['input_path'], f)), 'r', encoding='utf8').read() for f in self.life_queue]
         all_lifes = '\n'.join(all_lifes)
 
         lifes = Life()
@@ -515,7 +483,7 @@ class ProcessingManager(object):
         
         self.is_bulk_processing = True
         
-        all_lifes = [open(expanduser(join(self.config['input_path'], f)), 'r').read() for f in self.life_queue]
+        all_lifes = [open(expanduser(join(self.config['input_path'], f)), 'r', encoding='utf8').read() for f in self.life_queue]
         all_lifes = '\n'.join(all_lifes)
 
         lifes = Life()
@@ -577,7 +545,7 @@ class ProcessingManager(object):
         return track
 
     def adjust_to_annotate(self, track):
-        """ Extracts location and transportation modes
+        """ Extracts location from track
 
         Args:
             track (:obj:`tracktotrip.Track`)
@@ -606,10 +574,13 @@ class ProcessingManager(object):
             else:
                 return []
 
+        # Does not use APIs to infer location in annotate step
         track.infer_location(
             get_locations,
             max_distance=c_loc['max_distance'],
+            use_google=False,
             google_key=c_loc['google_key'],
+            use_foursquare=False,
             foursquare_client_id=c_loc['foursquare_client_id'],
             foursquare_client_secret=c_loc['foursquare_client_secret'],
             limit=c_loc['limit']
@@ -651,12 +622,23 @@ class ProcessingManager(object):
         if not track.name or len(track.name) == 0:
             track.name = track.generate_name(self.config['trip_name_format'])
         
-        output_path = join(expanduser(self.config['output_path']), track.name)
-        is_edit = isfile(output_path)
+        # Is editing if a file exists in output with the day's date
+        output_files = glob.glob(self.config['output_path'] + f'{track.name}*')
+        is_edit = len(output_files) > 0
 
         # Export trip to GPX
         if self.config['output_path']:
-            save_to_file(output_path, track.to_gpx())
+            if self.config['multiple_gpxs_for_day']:
+                i = 1
+                for segment in track.segments:
+                    seg = tt.Track('', [segment], debug=self.debug)
+                    name = track.name.split('.')[0] 
+                    output_path = join(expanduser(self.config['output_path']), name + f'_{i}.gpx')
+                    i += 1
+                    save_to_file(output_path, seg.to_gpx())
+            else:
+                output_path = join(expanduser(self.config['output_path']), track.name)
+                save_to_file(output_path, track.to_gpx())
 
         # To LIFE
         if self.config['life_path']:
@@ -898,7 +880,9 @@ class ProcessingManager(object):
             point,
             get_locations,
             max_distance=c_loc['max_distance'],
+            use_google=c_loc['use'] and c_loc['use_google'],
             google_key=c_loc['google_key'],
+            use_foursquare=c_loc['use'] and c_loc['use_foursquare'],
             foursquare_client_id=c_loc['foursquare_client_id'],
             foursquare_client_secret=c_loc['foursquare_client_secret'],
             limit=c_loc['limit'],
@@ -930,12 +914,6 @@ class ProcessingManager(object):
         db.dispose(conn, cur)
         return [r['points'] for r in result]
 
-    def get_transportation_suggestions(self, points):
-        segment = tt.Segment(points, debug=self.debug).compute_metrics()
-        points = segment.points
-        modes = classify(self.clf, points, self.config['transportation']['min_time'], debug=self.debug)
-        return modes['classification']
-
     def dismiss_day(self, day):
         existing_days = list(self.queue.keys())
         if day in existing_days:
@@ -957,9 +935,13 @@ class ProcessingManager(object):
 
     def copy_day_to_input(self, day):
         #TODO take output name format into consideration (can be changed in config)
-        day_gpx_path = join(expanduser(self.config['output_path']), day + '.gpx')
-        input_path = join(expanduser(self.config['input_path']), day + '.gpx')
-        copyfile(day_gpx_path, input_path)
+
+        # Get all files with day's date
+        output_files = glob.glob(self.config['output_path'] + f'{day}*')
+
+        for day_gpx_path in output_files:
+            file_name = day_gpx_path.replace(expanduser(self.config['output_path']), '') 
+            copyfile(day_gpx_path, join(expanduser(self.config['input_path']), file_name))
         
         self.reload_queue()
         self.change_day(day)

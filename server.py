@@ -273,13 +273,6 @@ def get_canonical_locations():
     response = jsonify(processing_manager.get_canonical_locations())
     return set_headers(response)
 
-@app.route('/process/transportation', methods=['POST'])
-def get_transportation_suggestions():
-    payload = request.get_json(force=True)
-    points = [Point.from_json(p) for p in payload['points']]
-    response = jsonify(processing_manager.get_transportation_suggestions(points))
-    return set_headers(response)
-
 @app.route('/process/dismissDay', methods=['POST'])
 def dismiss_day():
     payload = request.get_json(force=True)

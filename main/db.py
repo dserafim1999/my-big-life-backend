@@ -302,32 +302,6 @@ def insert_location(cur, label, point, max_distance, min_samples, debug = False)
                 VALUES (%s, %s, %s)
                 """, (label, point, Segment([point, point], debug)))
 
-def insert_transportation_mode(cur, tmode, trip_id, segment, debug = False):
-    """ Inserts transportation mode in the database
-
-    Args:
-        cur (:obj:`psycopg2.cursor`)
-        tmode (:obj:`dict`): transportation mode, with keys: label, from and to
-        trip_id (int): Id of the trip that generated the current tranportation mode
-        segment (:obj:`tracktotrip.Segment`): Segment that generated the current transportation mode
-    """
-    label = tmode['label']
-    from_index = tmode['from']
-    to_index = tmode['to']
-
-    cur.execute("""
-            INSERT INTO trips_transportation_modes(trip_id, label, start_date, end_date, start_index, end_index, bounds)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (
-                trip_id,
-                label,
-                segment.points[from_index].time,
-                segment.points[to_index].time,
-                from_index,
-                to_index,
-                gis_bounds(segment.bounds(from_index, to_index), debug)
-            ))
-
 def insert_stay(cur, label, start_date, end_date, debug = False):
     """ Inserts stay in the database
 
@@ -356,11 +330,6 @@ def insert_segment(cur, segment, max_distance, min_samples, debug = False):
     Returns:
         int: Segment id
     """
-    # insert_location(cur, segment.location_from.label, segment.points[0], max_distance, min_samples)
-    # insert_location(cur, segment.location_to.label, segment.points[-1], max_distance, min_samples)
-
-    # def toTsmp(d):
-    #     return psycopg2.Timestamp(d.year, d.month, d.day, d.hour, d.minute, d.second)
 
     tstamps = [p.time.replace(second=0, microsecond=0) for p in segment.points]
 
@@ -377,9 +346,6 @@ def insert_segment(cur, segment, max_distance, min_samples, debug = False):
             ))
     trip_id = cur.fetchone()
     trip_id = trip_id[0]
-
-    for tmode in segment.transportation_modes:
-        insert_transportation_mode(cur, tmode, trip_id, segment, debug)
 
     return trip_id
 

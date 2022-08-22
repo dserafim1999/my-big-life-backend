@@ -19,6 +19,7 @@ class MainManager(object):
 
     def __init__(self, config_file, debug):
         self.config = dict(CONFIG)
+        self.configFile = config_file
         self.debug = debug
         self.loadedBoundingBox = [{"lat": 0, "lon": 0}, {"lat": 0, "lon": 0}]
 
@@ -29,6 +30,8 @@ class MainManager(object):
 
     def update_config(self, new_config):
         update_dict(self.config, new_config)
+        with open(expanduser(self.configFile), 'w') as config_file:
+            json.dump(self.config, config_file, indent=4)
 
     def db_connect(self):
         """ Creates a connection with the database
@@ -46,6 +49,10 @@ class MainManager(object):
             return None, None
 
     def get_trips_and_locations(self):
+        """
+        TODO docs
+        """
+
         conn, cur = self.db_connect()
         result = []
         if conn and cur:
@@ -63,6 +70,10 @@ class MainManager(object):
         return {"trips": [r['points'] for r in trips], "locations": [r['point'] for r in locations]}
 
     def get_trips(self, latMin, lonMin, latMax, lonMax, canonical):
+        """
+        TODO docs
+        """
+
         conn, cur = self.db_connect()
         self.loadedBoundingBox = [{"lat": latMin, "lon": lonMin}, {"lat": latMax, "lon": lonMax}]
 
@@ -77,6 +88,10 @@ class MainManager(object):
         return {"trips": [r['points'] for r in trips]}
 
     def get_more_trips(self, latMin, lonMin, latMax, lonMax, canonical):
+        """
+        TODO docs
+        """
+
         conn, cur = self.db_connect()
 
         if conn and cur:
@@ -92,6 +107,10 @@ class MainManager(object):
         return {"trips": [r['points'] for r in trips]}
 
     def get_all_trips(self):
+        """
+        TODO docs
+        """
+
         conn, cur = self.db_connect()
         if conn and cur:
             trips = db.get_all_trips(cur, self.debug)
@@ -104,6 +123,10 @@ class MainManager(object):
         return {"trips": [r['points'] for r in trips]}
 
     def get_life_from_day(self, date):
+        """
+        TODO docs
+        """
+
         f = open(join(expanduser(self.config['life_all'])), "r")
         raw_life = f.read()
 
@@ -113,6 +136,10 @@ class MainManager(object):
         return repr(life.day_at_date(date))
 
     def delete_day(self, date):
+        """
+        TODO docs
+        """
+
         conn, cur = self.db_connect()
         if conn and cur:
             #if canonical trips exist that are only tied to deleted trips, delete
@@ -151,6 +178,10 @@ class MainManager(object):
                 dest_file.write(repr(lifes))
 
     def upload_file(self, file):
+        """
+        TODO docs
+        """
+        
         f = open(join(expanduser(self.config['input_path']), file['name']), "w")
         f.write(file["data"])
         f.close()

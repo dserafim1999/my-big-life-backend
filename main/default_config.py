@@ -19,6 +19,8 @@ CONFIG = {
     'trip_annotations': False,
     'bulk_uses_processing': True,
     'load_more_amount': 10,
+    'trip_name_format': '%Y-%m-%d',
+    'multiple_gpxs_for_day': False,
     'smoothing': {
         'use': True,
         'algorithm': 'inverse',
@@ -46,15 +48,4 @@ CONFIG = {
         'foursquare_client_id': '',
         'foursquare_client_secret': ''
     },
-    'transportation': {
-        'use': True,
-        'remove_stops': False,
-        'min_time': 60,
-        'classifier_path': None
-    },
-    'trip_learning': {
-        'use': True,
-        'epsilon': 0.0
-    },
-    'trip_name_format': '%Y-%m-%d'
 }
