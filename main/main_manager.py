@@ -19,6 +19,7 @@ class MainManager(object):
 
     def __init__(self, config_file, debug):
         self.config = dict(CONFIG)
+        self.configFile = config_file
         self.debug = debug
         self.loadedBoundingBox = [{"lat": 0, "lon": 0}, {"lat": 0, "lon": 0}]
 
@@ -29,6 +30,8 @@ class MainManager(object):
 
     def update_config(self, new_config):
         update_dict(self.config, new_config)
+        with open(expanduser(self.configFile), 'w') as config_file:
+            json.dump(self.config, config_file, indent=4)
 
     def db_connect(self):
         """ Creates a connection with the database
