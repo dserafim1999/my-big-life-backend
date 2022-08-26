@@ -340,7 +340,7 @@ class Range:
         with_chunk = f" {table_name} AS ( " \
                         "SELECT (DATE_PART('day', end_date - start_date) * 24 + " \
                         " DATE_PART('hour', end_date - start_date)) * 60 +" \
-                        " DATE_PART('minute', end_date - start_date) AS duration FROM stays) "
+                        " DATE_PART('minute', end_date - start_date) AS duration, stay_id FROM stays) "
         where_chunk = f" {table_name}.duration {self.durationSign} '{self.duration}' "
 
         return (table_name, with_chunk, where_chunk)
@@ -384,6 +384,7 @@ class Range:
             tables.append(duration_chunks[0])
             with_chunks.append(duration_chunks[1])
             where_chunks.append(duration_chunks[2])
+            where_chunks.append(f" {duration_chunks[0]}.stay_id = stays.stay_id ")
 
         if self.location is not None:
             location_chunks = self.query_chunk_location("locs")
@@ -407,7 +408,7 @@ class Range:
 
 
     def generate_query(self):
-        base_query = " SELECT DISTINCT stay_id, start_date, end_date, locations.centroid, locations.label FROM "
+        base_query = " SELECT DISTINCT stays.stay_id, start_date, end_date, locations.centroid, locations.label FROM "
 
         tables, with_chunks, where_chunks = self.query_chunks()
 
