@@ -4,7 +4,8 @@ Database related functions
 import datetime
 import ppygis3
 import psycopg2
-from psycopg2.extensions import AsIs, adapt, register_adapter
+
+from psycopg2.extensions import AsIs, register_adapter
 from tracktotrip import Segment, Point
 from tracktotrip.location import update_location_centroid
 from life.life import Life
@@ -24,6 +25,8 @@ def to_point(gis_point, time=None, debug = False):
         gis_point
         timestamp (:obj:`datatime.datetime`, optional, debug = False): timestamp to use
             Defaults to none (point will have empty timestamp)
+            debug (bool, optional): activates debug mode. 
+                Defaults to False
     Returns:
         :obj:`tracktotrip.Point`
     """
@@ -37,6 +40,8 @@ def to_segment(gis_points, timestamps=None, debug = False):
         gis_points
         timestamps (:obj:`list` of :obj:`datatime.datetime`, optional): timestamps to use
             Defaults to none (all points will have empty timestamps)
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     Returns:
         :obj:`tracktotrip.Segment`
     """
@@ -59,6 +64,8 @@ def adapt_segment(segment, debug = False):
 
     Args:
         segment (:obj:`tracktotrip.Segment`)
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     """
     points = ""
 
@@ -79,6 +86,8 @@ def span_date_to_datetime(date, minutes, debug = False):
     Args:
         date (str): Date in the `%Y_%m_%d` format
         minutes (int): Minutes since midnight
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     Returns:
         :obj:`datetime.datetime`
     """
@@ -87,6 +96,16 @@ def span_date_to_datetime(date, minutes, debug = False):
     return datetime.datetime.strptime(str_date, date_format)
 
 def get_day_from_life(life, track, debug = False):
+    """ Extracts the day from a `life.Life` object
+
+    Args:
+        life (:obj:`life.Life`)
+        track (:obj:`tracktotrip.Segment`)
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
+    Returns:
+        str or None
+    """
     track_time = track.segments[0].points[0].time
     track_day = "%d_%d_%d" % (track_time.year, track_time.month, track_time.day)
     for day in life.days:
@@ -95,10 +114,24 @@ def get_day_from_life(life, track, debug = False):
     return None
 
 def life_date(point, debug = False):
+    """ Convert point date into LIFE date format
+
+    Args:
+        point (:obj:`tracktotrip.Point`) 
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
+    """
     date = point.time.date()
     return "%d_%02d_%02d" % (date.year, date.month, date.day)
 
 def life_time(point, debug = False):
+    """ Convert point date into LIFE time format
+
+    Args:
+        point (:obj:`tracktotrip.Point`) 
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
+    """
     time = point.time.time()
     return "%02d%02d" % (time.hour, time.minute)
 
@@ -113,12 +146,25 @@ def load_from_segments_annotated(cur, track, life_content, max_distance, min_sam
             `tracktotrip.location.update_location_centroid`
         min_samples (float): Minimum samples requires for location.  See
             `tracktotrip.location.update_location_centroid`
+        insert_locs (bool): Determines whether locations are inserted into database
+            Defaults to True
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     """
     
     life = Life()
     life.from_string(life_content.split('\n'))
 
     def in_loc(points, start, end):
+        """ Inserts locations into database
+        
+        See `insert_location`
+
+        Args:
+            points (:obj:`dict`)
+            start (int)
+            end (int)
+        """
         startPoint = points[start]
         endPoint = points[end]
         startLocation = life.where_when(life_date(startPoint, debug), life_time(startPoint, debug))
@@ -151,8 +197,6 @@ def load_from_segments_annotated(cur, track, life_content, max_distance, min_sam
     if insert_locs:
         for segment in track.segments:
             in_loc(segment.points, 0, -1)
-            # find trip
-            #insert_segment(cur, segment, max_distance, min_samples)
 
     # Insert stays
     for day in life.days:
@@ -180,6 +224,8 @@ def load_from_life(cur, content, max_distance, min_samples, debug = False):
             `tracktotrip.location.update_location_centroid`
         min_samples (float): Minimum samples requires for location.  See
             `tracktotrip.location.update_location_centroid`
+        debug (bool, optional): activates debug mode. 
+            Defaults to False    
     """
     life = Life()
     life.from_string(content.split('\n'))
@@ -241,16 +287,21 @@ def dispose(conn, cur):
         cur.close()
 
 
-def gis_bounds(bound, debug = False):
+def gis_bounds(bounds, debug = False):
     """ Converts bounds to its representation
+
+    Args:
+        bounds ((float, float, float, float))
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     """
 
     points = ''
-    points += ("%s %s 0, " % (bound[0], bound[1]))
-    points += ("%s %s 0, " % (bound[0], bound[3]))
-    points += ("%s %s 0, " % (bound[2], bound[1]))
-    points += ("%s %s 0, " % (bound[2], bound[3]))
-    points += ("%s %s 0"   % (bound[0], bound[1]))
+    points += ("%s %s 0, " % (bounds[0], bounds[1]))
+    points += ("%s %s 0, " % (bounds[0], bounds[3]))
+    points += ("%s %s 0, " % (bounds[2], bounds[1]))
+    points += ("%s %s 0, " % (bounds[2], bounds[3]))
+    points += ("%s %s 0"   % (bounds[0], bounds[1]))
 
     return AsIs("'POLYGON((%s))'" % (points))
 
@@ -265,6 +316,8 @@ def insert_location(cur, label, point, max_distance, min_samples, debug = False)
             `tracktotrip.location.update_location_centroid`
         min_samples (float): Minimum samples requires for location.  See
             `tracktotrip.location.update_location_centroid`
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     """
 
     if (debug):
@@ -310,6 +363,8 @@ def insert_stay(cur, label, start_date, end_date, debug = False):
         label (str): Location
         start_date (:obj:`datetime.datetime`)
         end_date (:obj:`datetime.datetime`)
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     """
 
     cur.execute("""
@@ -327,6 +382,8 @@ def insert_segment(cur, segment, max_distance, min_samples, debug = False):
             `tracktotrip.location.update_location_centroid`
         min_samples (float): Minimum samples requires for location.  See
             `tracktotrip.location.update_location_centroid`
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     Returns:
         int: Segment id
     """
@@ -356,6 +413,8 @@ def match_canonical_trip(cur, trip, distance, debug = False):
     Args:
         cur (:obj:`psycopg2.cursor`)
         trip (:obj:`tracktotrip.Segment`): Trip to match
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     """
     cur.execute("""
         SELECT canonical_id, points FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
@@ -376,6 +435,8 @@ def match_canonical_trip_bounds(cur, bounds, debug = False):
     Args:
         cur (:obj:`psycopg2.cursor`)
         trip (:obj:`tracktotrip.Segment`): Trip to match
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     Returns:
         :obj:`list` of (int, :obj:`tracktotrip.Segment`, int): List of tuples with the id of
             the canonical trip, the segment representation and the number of times it appears
@@ -407,6 +468,8 @@ def insert_canonical_trip(cur, can_trip, mother_trip_id, debug = False):
         cur (:obj:`psycopg2.cursor`)
         can_trip (:obj:`tracktotrip.Segment`): Canonical trip
         mother_trip_id (int): Id of the trip that originated the canonical representation
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     Returns:
         int: Canonical trip id
     """
@@ -437,6 +500,8 @@ def update_canonical_trip(cur, can_id, trip, mother_trip_id, debug = False):
         can_id (int): canonical trip id to update
         trip (:obj:`tracktotrip.Segment): canonical trip
         mother_trip_id (int): Id of trip that caused the update
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     """
 
     cur.execute("""
@@ -458,6 +523,8 @@ def query_locations(cur, lat, lon, radius, debug = False):
         lat (float): Latitude
         lon (float): Longitude
         radius (float): Radius from the given point, in meters
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     Returns:
         :obj:`list` of (str, ?, ?): List of tuples with the label, the centroid, and the point
             cluster of the location. Centroid and point cluster need to be converted
@@ -481,6 +548,8 @@ def get_canonical_trips(cur, debug = False):
 
     Args:
         cur (:obj:`psycopg2.cursor`)
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     Returns:
         :obj:`list` of :obj:`dict`:
             [{ 'id': 1, 'points': <tracktotrip.Segment> }, ...]
@@ -494,6 +563,8 @@ def get_canonical_locations(cur, debug = False):
 
     Args:
         cur (:obj:`psycopg2.cursor`)
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     Returns:
         :obj:`list` of :obj:`dict`:
             [{ 'id': 1, 'points': <tracktotrip.Segment> }, ...]
@@ -507,6 +578,8 @@ def get_trips(cur, bounding_box, canonical=False, debug = False):
 
     Args:
         cur (:obj:`psycopg2.cursor`)
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     Returns:
         :obj:`list` of :obj:`dict`:
             [{ 'id': 1, 'points': <tracktotrip.Segment> }, ...]
@@ -529,6 +602,8 @@ def get_more_trips(cur, bounding_box, loaded_bb, canonical=False, debug = False)
 
     Args:
         cur (:obj:`psycopg2.cursor`)
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     Returns:
         :obj:`list` of :obj:`dict`:
             [{ 'id': 1, 'points': <tracktotrip.Segment> }, ...]
@@ -568,6 +643,8 @@ def get_all_trips(cur, debug = False):
 
     Args:
         cur (:obj:`psycopg2.cursor`)
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     Returns:
         :obj:`list` of :obj:`dict`:
             [{ 'id': 1, 'points': <tracktotrip.Segment> }, ...]
@@ -577,18 +654,27 @@ def get_all_trips(cur, debug = False):
     return [{'id': t[0], 'points': to_segment(t[1], t[2], debug)} for t in trips]
 
 def remove_trips_from_day(cur, date, debug= False):
-    '''
-    TODO docs
+    ''' Removes trips and stays associated to a certain day
+
+    Args:
+        cur (:obj:`psycopg2.cursor`)
+        date (str)
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     '''
     cur.execute("""
-        delete from trips where start_date::date = %s;
-        delete from stays where start_date::date = %s;
+        DELETE FROM trips WHERE start_date::date = %s;
+        DELETE FROM stays WHERE start_date::date = %s;
     """, (date, date)) 
 
 def remove_canonical_trips_from_day(cur, date, debug=False):
-    '''
-    TODO docs
-    Removes canonical trips that are only associated to one track of a certain day
+    ''' Removes canonical trips that are only associated to one track of a certain day
+    
+    Args:
+        cur (:obj:`psycopg2.cursor`)
+        date (str)
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     '''
     
     cur.execute(f"""
@@ -610,7 +696,12 @@ def remove_canonical_trips_from_day(cur, date, debug=False):
 
 
 def execute_query(cur, query, debug = False):
-    '''
-    TODO docs
+    ''' Executes query in database
+
+    Args:
+        cur (:obj:`psycopg2.cursor`)
+        query (str)
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
     '''
     cur.execute(query)

@@ -5,25 +5,24 @@ Contains class that orchestrates queries
 
 import json
 import datetime
-import itertools
 import math
+import psycopg2
+import queries.utils as utils 
 
 from os.path import expanduser, isfile
-from operator import itemgetter
 from traceback import print_tb
-
-
-import psycopg2
 from scipy import rand
 from main import db
 from utils import update_dict
 
-import queries.utils as utils 
-
 from main.default_config import CONFIG
 
 class QueryManager(object):
-    """ 
+    """ Manages queries
+
+    Arguments:
+        currentQuerySize: Number of JSON objects, either Stays or Routes, that compose the query
+        loadMoreId: latest ID for a chunk of results (based on number of results loaded at a time) 
     """
     def __init__(self, config_file, debug):
         self.config = dict(CONFIG)
@@ -38,6 +37,11 @@ class QueryManager(object):
         
 
     def update_config(self, new_config):
+        """ Updates the config object by overlapping with the new config object
+
+        Args:
+            new_config (obj): JSON object that contains configuration changes 
+        """
         update_dict(self.config, new_config)
 
     def db_connect(self):
@@ -56,6 +60,14 @@ class QueryManager(object):
             return None, None
     
     def execute_query(self, payload):
+        """ Receives a query JSON object and executes the query in the database
+
+        Args:
+            payload (:obj:`dict`): contains the query (data) and if all results should be loaded at once (loadAll)
+
+        Returns:
+            :obj:`dict`: JSON object containing loaded results, the total size of the results and the query size
+        """
         conn, cur = self.db_connect()
 
         items = self.parse_items(payload["data"])
@@ -63,6 +75,17 @@ class QueryManager(object):
         return self.fetch_from_db(cur, items, payload["loadAll"], self.debug)
 
     def fetch_from_db(self, cur, items, loadAll, debug = False):
+        """ Composes the SQL query based on the number of items on the query object and formats the results
+
+        Args:
+            cur (psycopg2.cursor)
+            items (:obj:`list` of :obj:`Range` and/or :obj:`Interval`):
+            loadAll (bool): defines if results should be loaded in segments or simultaneously
+            debug (bool, optional): activates debug mode. 
+                Defaults to False
+        Returns:
+            :obj:`dict`: JSON object containing loaded results, the total size of the results and the query size
+        """
         results = []
         segments = []
         to_show= []
@@ -143,11 +166,18 @@ class QueryManager(object):
             id += 1
 
         self.allResults = utils.quartiles(to_show, size)
-        self.allSegments = segments #TODO add segment to result instead
+        self.allSegments = segments
 
         return self.load_results(loadAll)
 
     def load_results(self, loadAll):
+        """ Handles how results are loaded, whether they are loaded all at once or in chunks
+
+        Args:
+            loadAll (bool): defines if results should be loaded in segments or simultaneously
+        Returns:
+            :obj:`dict`: JSON object containing loaded results, the total size of the results and the query size
+        """
         self.numResults = int(self.config['load_more_amount'])
 
         i = 0
@@ -185,7 +215,14 @@ class QueryManager(object):
         return {"results": results, "total": len(self.allResults), "querySize": self.currentQuerySize}
 
     def sort_render_data(self, stays, routes):
-        """TODO comments"""
+        """ Creates an object to visually represent stays and routes based on how the overlap
+
+        Args:
+            stays (:obj:`list`: of :obj:`dict`)
+            routes (:obj:`list`: of :obj:`dict`)
+        Returns:
+            :obj:`list`: of :obj:`dict`
+        """
         num = 0
         stays = sorted(stays, key=lambda d: d["time"].time()) 
         stays_freq = []
@@ -204,11 +241,24 @@ class QueryManager(object):
 
 
     def generate_queries(self, items):
+        """ Iterates through list of Range and Interval objects and generates their query
+        
+        Args:
+            items(:obj:`list` of :obj:`Range` and/or :obj:`Interval`)
+        """
+
         for item in items:
             item.generate_query()
 
 
     def parse_items(self, obj):
+        """ Parses the JSON object that corresponds to a query in order to format or remove incomplete data
+
+        Args:
+            obj (:obj:`list` of :obj:`dict`)
+        Returns:
+            :obj:`list` of :obj:`Range` and/or :obj:`Interval`
+        """
         items = []
         global date
         date = obj[0]["date"]
@@ -220,9 +270,9 @@ class QueryManager(object):
             if item.get("spatialRange") != None: #its a range
                 global previousEndDate
                 if len(items) == 0:
-                    previousEndDate = utils.get_all_but_sign(item["start"])
+                    previousEndDate = utils.get_all_but_symbol(item["start"])
                 else:
-                    previousEndDate = utils.get_all_but_sign(item["end"])
+                    previousEndDate = utils.get_all_but_symbol(item["end"])
                 items.append(Range(item["start"], item["end"], item["temporalStartRange"], item["temporalEndRange"], item["duration"], item["location"], item["spatialRange"]))
             else: #its an interval
                 items.append(Interval(item["start"], item["end"], item["temporalStartRange"], item["temporalEndRange"], item["duration"], item["route"]))
@@ -230,26 +280,40 @@ class QueryManager(object):
         return items
 
 class Range:
+    """ Defines a period of time that was spent at a certain location"""
     start = ""
     end = ""
-    temporalStartRange = 0 #minutes
-    temporalEndRange = 0
-    duration = "" #6h15m 6h 5m
-    location = ""
-    spatialRange = 0 #meters
-    durationSign = ""
-    startSign = ""
-    endSign = ""
-    spatialSign = ""
+    temporalStartRange = 0 #In minutes
+    temporalEndRange = 0 #In minutes
+    duration = "" #Example: 6h15m or 6h or 5m
+    location = "" #Location name
+    locationCoords = "" #Format: lat,lon
+    spatialRange = 0 #In meters
+    # Symbol can be =, <, ≤, > or ≥
+    durationSymbol = "" 
+    startSymbol = ""
+    endSymbol = ""
+    spatialSymbol = ""
     fullDate = ""
     castTime = ""
     query = ""
-    locationCoords = ""
 
     def get_query(self):
+        """Returns generated query
+        
+        Returns:
+            str
+        """
         return self.query
 
     def has_value(self, value):
+        """ Checks if value string is not empty
+
+        Args:
+            value (str)
+        Returns:
+            bool
+        """
         return value.strip() != ""
 
     def __init__(self, start, end, temporalStartRange, temporalEndRange, duration, location, spatialRange):
@@ -260,21 +324,21 @@ class Range:
 
         if self.has_value(start):
             self.start = utils.join_date_time(date, start)
-            self.startSign = utils.get_sign(start)
+            self.startSymbol = utils.get_symbol(start)
         else:
             self.start = None
-            self.startSign = None
+            self.startSymbol = None
 
         if self.has_value(end):
             self.end = utils.join_date_time(date, end)
-            self.endSign = utils.get_sign(end)
+            self.endSymbol = utils.get_symbol(end)
         else:
             self.end = None
-            self.endSign = None
+            self.endSymbol = None
 
-        if(self.start is not None and utils.get_all_but_sign(start) < previousEndDate and date != "--/--/----"):
+        if(self.start is not None and utils.get_all_but_symbol(start) < previousEndDate and date != "--/--/----"):
             self.start += datetime.timedelta(days=1)
-        if(self.end is not None and utils.get_all_but_sign(end) < previousEndDate and date != "--/--/----"):
+        if(self.end is not None and utils.get_all_but_symbol(end) < previousEndDate and date != "--/--/----"):
             self.end += datetime.timedelta(days=1)
 
         if self.has_value(temporalStartRange): #stored as half
@@ -289,17 +353,17 @@ class Range:
 
         if self.has_value(duration):
             self.duration = utils.duration_to_sql(duration)
-            self.durationSign = utils.get_sign(duration)
+            self.durationSymbol = utils.get_symbol(duration)
         else:
             self.duration = None
-            self.durationSign = None
+            self.durationSymbol = None
 
         if self.has_value(spatialRange):
             self.spatialRange = utils.spatial_range_to_meters(spatialRange)
-            self.spatialSign = utils.get_sign(spatialRange)
+            self.spatialSymbol = utils.get_symbol(spatialRange)
         else:
             self.spatialRange = None
-            self.spatialSign = ""
+            self.spatialSymbol = ""
 
         if self.has_value(location):
             if utils.is_coordinates(location):
@@ -307,57 +371,114 @@ class Range:
                 self.location = None
                 if self.spatialRange is None:
                     self.spatialRange = 0
-                    self.spatialSign = "="
+                    self.spatialSymbol = "="
             else:
                 self.locationCoords = None
                 self.location = location
                 if self.spatialRange is None:
                     self.spatialRange = 0
-                    self.spatialSign = "="
+                    self.spatialSymbol = "="
         else:
             self.location = None
             self.locationCoords = None
 
-    def query_chunk_date(self, type, cast, sign, date):
-        return f" {type}{cast} {sign} '{date}' "
+    def query_chunk_date(self, type, cast, symbol, date):
+        """ Creates a query chunk related to dates
+
+        Args:
+            type (str): defines the parameter
+            cast (str): defines the part of the date to use
+            symbol (str): either =, <, ≤, > or ≥
+            date (str)
+        Returns:
+            str: formatted string that represents part of a query
+        """
+        return f" {type}{cast} {symbol} '{date}' "
 
     def query_chunk_start_date(self):
-        return self.query_chunk_date('start_date', self.castTime, self.startSign, self.start)
+        """ Creates a query chunk that compares the start date """
+
+        return self.query_chunk_date('start_date', self.castTime, self.startSymbol, self.start)
 
     def query_chunk_end_date(self):
-        return self.query_chunk_date('end_date', self.castTime, self.endSign, self.end)
+        """ Creates a query chunk that compares the end date """
+
+        return self.query_chunk_date('end_date', self.castTime, self.endSymbol, self.end)
     
     def query_chunk_interval(self, type, cast, dateType, temporalRange, date):
+        """ Creates a query chunk related to an interval of time
+
+        Args:
+            type (str): defines the parameter
+            cast (str): defines the part of the date to use
+            dateType (str): defines the type of date to use
+            temporalRange (str): defines the number of minutes that will be used to create the start/end range of values that are also considered
+            date (str)
+        Returns:
+            str: formatted string that represents part of a query
+        """
         return f" {type}{cast} BETWEEN CAST('{date}' AS {dateType}) - CAST('{temporalRange}' AS INTERVAL) AND CAST('{date}' AS {dateType}) + CAST('{temporalRange}' AS INTERVAL) "
 
     def query_chunk_start_interval(self):
+        """ Creates a query chunk that compares the start date using an interval of time"""
+
         return self.query_chunk_interval('start_date', self.castTime, self.fullDate, self.temporalStartRange, self.start)
 
     def query_chunk_end_interval(self):
+        """ Creates a query chunk that compares the end date using an interval of time"""
+
         return self.query_chunk_interval('end_date', self.castTime, self.fullDate, self.temporalEndRange, self.end)
 
     def query_chunk_duration(self, table_name):
+        """ Creates a query chunk related to a duration of time
+
+        Args:
+            table_name (str): defines the name of the table that will be created to calculate the durations
+        Returns:
+            str: formatted string that represents part of a query
+        """
         with_chunk = f" {table_name} AS ( " \
                         "SELECT (DATE_PART('day', end_date - start_date) * 24 + " \
                         " DATE_PART('hour', end_date - start_date)) * 60 +" \
                         " DATE_PART('minute', end_date - start_date) AS duration, stay_id FROM stays) "
-        where_chunk = f" {table_name}.duration {self.durationSign} '{self.duration}' "
+        where_chunk = f" {table_name}.duration {self.durationSymbol} '{self.duration}' "
 
         return (table_name, with_chunk, where_chunk)
 
     def query_chunk_location(self, table_name):
+        """ Creates a query chunk related to named locations
+
+        Args:
+            table_name (str): defines the name of the table that will be created to calculate the location distances
+        Returns:
+            str: formatted string that represents part of a query
+        """
         with_chunk = f" {table_name} AS (SELECT centroid FROM locations WHERE label = '{self.location}') "
-        where_chunk = f" ST_DISTANCE({table_name}.centroid, locations.centroid) {self.spatialSign} '{self.spatialRange}' "
+        where_chunk = f" ST_DISTANCE({table_name}.centroid, locations.centroid) {self.spatialSymbol} '{self.spatialRange}' "
 
         return (table_name, with_chunk, where_chunk)
 
     def query_chunk_coords(self, table_name):
-        with_chunk = f" {table_name} AS (SELECT label FROM locations WHERE ST_Distance(centroid, ST_SetSRID(ST_MakePoint({self.locationCoords}),4326)) {self.spatialSign} '{self.spatialRange}' ) "
+        """ Creates a query chunk related to location coordinates
+
+        Args:
+            table_name (str): defines the name of the table that will be created to calculate the location distances
+        Returns:
+            str: formatted string that represents part of a query
+        """
+
+        with_chunk = f" {table_name} AS (SELECT label FROM locations WHERE ST_Distance(centroid, ST_SetSRID(ST_MakePoint({self.locationCoords}),4326)) {self.spatialSymbol} '{self.spatialRange}' ) "
         where_chunk = f" {table_name}.label = stays.location_label "
 
         return (table_name, with_chunk, where_chunk)
 
     def query_chunks(self):
+        """ Composes a tuple with query chunks that are derived from the query objects' parameters
+
+        Returns: 
+            (:obj:`list` of str, :obj:`list` of str, :obj:`list` of str): contains table names and chunks for the with and where sections of a SQL query
+        """
+
         with_chunks = []
         where_chunks = [" locations.label = stays.location_label "]
         tables = ["stays", "locations"]
@@ -365,7 +486,7 @@ class Range:
         if self.start is not None:
             if self.temporalStartRange is not None:
                 where_chunks.append(self.query_chunk_start_interval())
-                if self.startSign != '=':
+                if self.startSymbol != '=':
                     where_chunks.append(self.query_chunk_start_date())
             else:
                 where_chunks.append(self.query_chunk_start_date())
@@ -373,7 +494,7 @@ class Range:
         if self.end is not None:
             if self.temporalEndRange is not None:
                 where_chunks.append(self.query_chunk_end_interval())
-                if self.endSign != '=':
+                if self.endSymbol != '=':
                     where_chunks.append(self.query_chunk_end_date())
             else:
                 where_chunks.append(self.query_chunk_end_date())
@@ -408,6 +529,8 @@ class Range:
 
 
     def generate_query(self):
+        """ Composes a SQL query string using the query chunks that have been derived from the JSON query object """
+
         base_query = " SELECT DISTINCT stays.stay_id, start_date, end_date, locations.centroid, locations.label FROM "
 
         tables, with_chunks, where_chunks = self.query_chunks()
@@ -440,27 +563,40 @@ class Range:
                 if i < len(where_chunks) - 1:
                     query += " AND "
 
-        #print(query)
         self.query =  query
 
 class Interval:
+    """ Defines a period of time that was spent between locations """
     start = ""
     end = ""
-    temporalStartRange = 0 #minutes
-    temporalEndRange = 0
-    duration = ""
+    temporalStartRange = 0 #In minutes
+    temporalEndRange = 0 #In minutes
+    duration = ""  #Example: 6h15m or 6h or 5m
     route = ""
-    durationSign = ""
-    startSign = ""
-    endSign = ""
+    # Symbol can be =, <, ≤, > or ≥
+    durationSymbol = ""
+    startSymbol = ""
+    endSymbol = ""
     fullDate = ""
     castTime = ""
     query = ""
 
     def get_query(self):
+        """Returns generated query
+        
+        Returns:
+            str
+        """
         return self.query
 
     def has_value(self, value):
+        """ Checks if value string is not empty
+
+        Args:
+            value (str)
+        Returns:
+            bool
+        """
         return value.strip() != ""
 
     def __init__(self, start, end, temporalStartRange, temporalEndRange, duration, route):
@@ -471,21 +607,21 @@ class Interval:
 
         if self.has_value(start):
             self.start = utils.join_date_time(date, start)
-            self.startSign = utils.get_sign(start)
+            self.startSymbol = utils.get_symbol(start)
         else:
             self.start = None
-            self.startSign = None
+            self.startSymbol = None
 
         if self.has_value(end):
             self.end = utils.join_date_time(date, end)
-            self.endSign = utils.get_sign(end)
+            self.endSymbol = utils.get_symbol(end)
         else:
             self.end = None
-            self.endSign = None
+            self.endSymbol = None
 
-        if(self.start is not None and utils.get_all_but_sign(start) < previousEndDate):
+        if(self.start is not None and utils.get_all_but_symbol(start) < previousEndDate):
             self.start += datetime.timedelta(days=1)
-        if(self.end is not None and utils.get_all_but_sign(end) < previousEndDate):
+        if(self.end is not None and utils.get_all_but_symbol(end) < previousEndDate):
             self.end += datetime.timedelta(days=1)
 
         if self.has_value(temporalStartRange): #stored as half
@@ -500,10 +636,10 @@ class Interval:
 
         if self.has_value(duration):
             self.duration = utils.duration_to_sql(duration)
-            self.durationSign = utils.get_sign(duration)
+            self.durationSymbol = utils.get_symbol(duration)
         else:
             self.duration = None
-            self.durationSign = None
+            self.durationSymbol = None
 
         if self.has_value(route) and utils.is_coordinates(route):
             self.route = utils.switch_coordinates(route)
@@ -511,37 +647,84 @@ class Interval:
             self.route = None
 
 
-    def query_chunk_date(self, type, cast, sign, date):
-        return f" {type}{cast} {sign} '{date}' "
+    def query_chunk_date(self, type, cast, symbol, date):
+        """ Creates a query chunk related to dates
+
+        Args:
+            type (str): defines the parameter
+            cast (str): defines the part of the date to use
+            symbol (str): either =, <, ≤, > or ≥
+            date (str)
+        Returns:
+            str: formatted string that represents part of a query
+        """
+        return f" {type}{cast} {symbol} '{date}' "
 
     def query_chunk_start_date(self):
-        return self.query_chunk_date('start_date', self.castTime, self.startSign, self.start)
+        """ Creates a query chunk that compares the start date """
+
+        return self.query_chunk_date('start_date', self.castTime, self.startSymbol, self.start)
 
     def query_chunk_end_date(self):
-        return self.query_chunk_date('end_date', self.castTime, self.endSign, self.end)
+        """ Creates a query chunk that compares the end date """
+
+        return self.query_chunk_date('end_date', self.castTime, self.endSymbol, self.end)
     
     def query_chunk_interval(self, type, cast, dateType, temporalRange, date):
+        """ Creates a query chunk related to an interval of time
+
+        Args:
+            type (str): defines the parameter
+            cast (str): defines the part of the date to use
+            dateType (str): defines the type of date to use
+            temporalRange (str): defines the number of minutes that will be used to create the start/end range of values that are also considered
+            date (str)
+        Returns:
+            str: formatted string that represents part of a query
+        """
         return f" {type}{cast} BETWEEN CAST('{date}' AS {dateType}) - CAST('{temporalRange}' AS INTERVAL) AND CAST('{date}' AS {dateType}) + CAST('{temporalRange}' AS INTERVAL) "
 
     def query_chunk_start_interval(self):
+        """ Creates a query chunk that compares the start date using an interval of time"""
+
         return self.query_chunk_interval('start_date', self.castTime, self.fullDate, self.temporalStartRange, self.start)
 
     def query_chunk_end_interval(self):
+        """ Creates a query chunk that compares the end date using an interval of time"""
+
         return self.query_chunk_interval('end_date', self.castTime, self.fullDate, self.temporalEndRange, self.end)
 
     def query_chunk_duration(self, table_name):
+        """ Creates a query chunk related to a duration of time
+
+        Args:
+            table_name (str): defines the name of the table that will be created to calculate the durations
+        Returns:
+            str: formatted string that represents part of a query
+        """
         with_chunk = f" {table_name} AS ( " \
                         "SELECT (DATE_PART('day', end_date - start_date) * 24 + " \
                         " DATE_PART('hour', end_date - start_date)) * 60 +" \
                         " DATE_PART('minute', end_date - start_date) AS duration, trip_id FROM trips) "
-        where_chunk = f" {table_name}.duration {self.durationSign} '{self.duration}' "
+        where_chunk = f" {table_name}.duration {self.durationSymbol} '{self.duration}' "
 
         return (table_name, with_chunk, where_chunk)
 
     def query_chunk_route(self):
+        """ Creates a query chunk related to the route
+
+        Returns:
+            str: formatted string that represents part of a query
+        """
         return f" ST_DWithin(points, ST_SetSRID(ST_MakePoint({self.route}),4326)::geography, 250) "
 
     def query_chunks(self):
+        """ Composes a tuple with query chunks that are derived from the query objects' parameters
+
+        Returns: 
+            (:obj:`list` of str, :obj:`list` of str, :obj:`list` of str): contains table names and chunks for the with and where sections of a SQL query
+        """
+
         with_chunks = []
         where_chunks = []
         tables = ["trips"]
@@ -549,7 +732,7 @@ class Interval:
         if self.start is not None:
             if self.temporalStartRange is not None:
                 where_chunks.append(self.query_chunk_start_interval())
-                if self.startSign != '=':
+                if self.startSymbol != '=':
                     where_chunks.append(self.query_chunk_start_date())
             else:
                 where_chunks.append(self.query_chunk_start_date())
@@ -557,7 +740,7 @@ class Interval:
         if self.end is not None:
             if self.temporalEndRange is not None:
                 where_chunks.append(self.query_chunk_end_interval())
-                if self.endSign != '=':
+                if self.endSymbol != '=':
                     where_chunks.append(self.query_chunk_end_date())
             else:
                 where_chunks.append(self.query_chunk_end_date())
@@ -581,6 +764,8 @@ class Interval:
 
 
     def generate_query(self):
+        """ Composes a SQL query string using the query chunks that have been derived from the JSON query object """
+
         base_query = " SELECT DISTINCT trips.trip_id, start_date, end_date, points, timestamps FROM "
         tables, with_chunks, where_chunks = self.query_chunks()
 
@@ -615,6 +800,8 @@ class Interval:
         #print(query)
         self.query =  query
 class ResultRange:
+    """ Represents a set of results that correpond to a period of time spent in a location"""
+    
     id = ""
     start_date = None
     end_date = None
@@ -657,6 +844,8 @@ class ResultRange:
         }
 
 class ResultInterval:
+    """ Represents a set of results that correpond to a period of time spent between locations"""
+
     id = ""
     start_date = None
     end_date = None

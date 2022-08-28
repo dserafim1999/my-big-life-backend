@@ -152,7 +152,6 @@ class TracksReset(object):
 
 def main():
     reset = TracksReset('config.json')
-
     reset.reset_track_files()
 
 if __name__ == "__main__":

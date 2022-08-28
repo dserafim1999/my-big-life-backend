@@ -42,8 +42,7 @@ query_manager = QueryManager(args.config, args.debug)
 
 @app.route('/tripsLocations', methods=['GET'])
 def get_trips_and_locations():
-    """ 
-    TODO docs
+    """ Gets canoncial trips and locations
     Returns:
         :obj:`flask.response`
     """
@@ -53,8 +52,7 @@ def get_trips_and_locations():
 
 @app.route('/trips', methods=['GET'])
 def get_trips():
-    """ 
-    TODO docs
+    """ Gets trips in bounds 
     Returns:
         :obj:`flask.response`
     """
@@ -70,8 +68,7 @@ def get_trips():
 
 @app.route('/moreTrips', methods=['GET'])
 def get_more_trips():
-    """ 
-    TODO docs
+    """ Loads more trips in bounds
     Returns:
         :obj:`flask.response`
     """
@@ -87,8 +84,7 @@ def get_more_trips():
 
 @app.route('/uploadFile', methods=['POST'])
 def upload_file():
-    """ 
-    TODO docs
+    """ Receives file name and data to create file in input
     Returns:
         :obj:`flask.response`
     """
@@ -99,8 +95,7 @@ def upload_file():
 
 @app.route('/allTrips', methods=['GET'])
 def get_all_trips():    
-    """ 
-    TODO docs
+    """ Loads all trips
     Returns:
         :obj:`flask.response`
     """
@@ -133,8 +128,7 @@ def get_configuration():
 
 @app.route('/lifeFromDay', methods=['POST'])
 def get_life_from_day():
-    """ 
-    TODO docs
+    """ Loads LIFE string for a specific day
     Returns:
         :obj:`flask.response`
     """
@@ -145,8 +139,7 @@ def get_life_from_day():
 
 @app.route('/deleteDay', methods=['POST'])
 def delete_day():
-    """ 
-    TODO docs
+    """ Deletes a day from the database and existing files
     Returns:
         :obj:`flask.response`
     """
@@ -265,33 +258,61 @@ def location_suggestion():
 
 @app.route('/process/canonicalTrips', methods=['GET'])
 def get_canonical_trips():
+    """ Loads all canonical trips
+    Returns:
+        :obj:`flask.response`
+    """
+
     response = jsonify(processing_manager.get_canonical_trips())
     return set_headers(response)
 
 @app.route('/process/canonicalLocations', methods=['GET'])
 def get_canonical_locations():
+    """ Loads all canonical locations
+    Returns:
+        :obj:`flask.response`
+    """
+
     response = jsonify(processing_manager.get_canonical_locations())
     return set_headers(response)
 
 @app.route('/process/dismissDay', methods=['POST'])
 def dismiss_day():
+    """ Ignores day in queue
+    Returns:
+        :obj:`flask.response`
+    """
+
     payload = request.get_json(force=True)
     processing_manager.dismiss_day(payload["day"])
     return send_state()
 
 @app.route('/process/removeDay', methods=['POST'])
 def remove_day():
+    """ Removes day from input
+    Returns:
+        :obj:`flask.response`
+    """
+
     payload = request.get_json(force=True)
     processing_manager.remove_day(payload["files"])
     return send_state()
 
 @app.route('/process/skipDay', methods=['POST'])
 def skip_day():
+    """ Skips day in queue
+    Returns:
+        :obj:`flask.response`
+    """
     processing_manager.next_day(delete=False)
     return send_state()
 
 @app.route('/process/copyDayToInput', methods=['POST'])
 def copy_day_to_input():
+    """ Copies GPX file from day from output to input folder
+    Returns:
+        :obj:`flask.response`
+    """
     payload = request.get_json(force=True)
     processing_manager.copy_day_to_input(payload["date"])
     return send_state()
@@ -300,9 +321,9 @@ def copy_day_to_input():
 
 @app.route('/queries/execute', methods=['POST'])
 def execute_query():
-    """
+    """ Executes query based on query JSON object
     Returns:
-        :obj:``
+        :obj:`flask.response`
     """
     payload = request.get_json(force=True)
     response = jsonify(query_manager.execute_query(payload))
@@ -311,9 +332,9 @@ def execute_query():
 
 @app.route('/queries/loadMoreResults', methods=['POST'])
 def load_more_query_results():
-    """
+    """ Loads query results
     Returns:
-        :obj:``
+        :obj:`flask.response`
     """
     response = jsonify(query_manager.load_results(False))
     

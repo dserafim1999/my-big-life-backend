@@ -10,8 +10,16 @@ import numpy as np
 
 
 def join_date_time(date, time): #join 01/01/2001 with 01:01 to a  datetime
+    """ Joins date and time into a single timestamp, if date exists
+    
+    Args:
+        date (str)
+        time (str)
+    Returns:
+        :obj:`datetime.datetime`
+    """
 
-    if not time[0].isdigit(): #get rid of the signal
+    if not time[0].isdigit(): #get rid of the symbol
         time = time[1:]
 
     if(date != "--/--/----"):
@@ -20,6 +28,13 @@ def join_date_time(date, time): #join 01/01/2001 with 01:01 to a  datetime
         return datetime.datetime.strptime(time, "%H:%M").strftime("%H:%M:%S")
 
 def duration_to_sql(duration):
+    """ Converts formatted duration string into minutes
+    
+    Args:
+        duration (str)
+    Returns:
+        int
+    """
 
     minutes = re.search('\d{1,2}(?=m)', duration)
     if minutes is not None:
@@ -46,7 +61,15 @@ def duration_to_sql(duration):
     return final_minutes
 
 
-def fuzzy_to_sql(duration): #duration is divided in half for query purposes if not specified as ±
+def fuzzy_to_sql(duration): 
+    """ Parses range values into minutes. Duration is divided in half for query purposes if not specified as ±
+    
+    Args:
+        duration (str)
+    Returns:
+        int
+    """
+
     if not duration[0].isdigit():
         if duration[0] == '±':
             minutes = int(''.join([x for x in duration if x.isdigit()]))
@@ -57,9 +80,23 @@ def fuzzy_to_sql(duration): #duration is divided in half for query purposes if n
     return minutes
 
 def spatial_range_to_meters(range):
+    """ Parses spatial range string
+    
+    Args: 
+        range (str)
+    Returns:
+        int
+    """
     return int(''.join([x for x in range if x.isdigit()]))
 
-def get_sign(duration): #get the first char, being the sign
+def get_symbol(duration): 
+    """ Extracts the first char from the duration string (in this case, the symbol)
+    
+    Args: 
+        duration (str)
+    Returns:
+        str
+    """
     if not duration[0].isdigit():
         if duration[0] == '≤':
             return '<='
@@ -70,7 +107,14 @@ def get_sign(duration): #get the first char, being the sign
     else:
         return '='
 
-def get_all_but_sign(duration): #get the first char, being the sign
+def get_all_but_symbol(duration):
+    """ Extracts every char from the duration string excluding the symbol
+    
+    Args: 
+        duration (str)
+    Returns:
+        str
+    """
     result = ""
     if duration.strip() == "":
         return ""
@@ -80,19 +124,48 @@ def get_all_but_sign(duration): #get the first char, being the sign
         return duration
 
 def is_full_date(date):
+    """ Extracts date type
+    
+    Args:
+        date (str)
+    Returns:
+        str
+    """
     if date != "--/--/----":
         return 'TIMESTAMP', ""
     else:
         return 'TIME', "::time"
 
 def is_coordinates(loc):
-    return  re.match(r'^[-+]?([1-8]?\d(\.\d+)?|90(\.0+)?),\s*[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]?\d))(\.\d+)?)$', loc)
+    """ Uses pattern matching on location string
+    
+    Args:
+        loc (str): coordinates string
+    Returns:
+        :obj:`re.Match` or None
+    """
+
+    return re.match(r'^[-+]?([1-8]?\d(\.\d+)?|90(\.0+)?),\s*[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]?\d))(\.\d+)?)$', loc)
 
 def switch_coordinates(loc):
+    """ Flips latitude and longitude
+    
+    Args:
+        loc (str): coordinates string
+    Returns:
+        str
+    """
     coords = [x.strip() for x in loc.split(',')]
     return coords[1] + ", " + coords[0]
 
 def represent_int(s):
+    """ Tests string to determine if it can be converted into int
+    
+    Args:
+        s (str)
+    Returns:
+        bool
+    """
     try:
         int(s)
         return True
@@ -100,6 +173,14 @@ def represent_int(s):
         return False
 
 def quartiles(to_show, nr_queries):
+    """ Clusters similar results into the same lists
+
+    Args:
+        to_show (:obj:`list` of :obj:`dict`): list with query results
+        nr_queries (int): total number of ranges/intervals in query
+    Returns:
+        :obj:`dict` of :obj:`list`
+    """
     dict = {}
 
     for key, value in list(to_show.items()):
@@ -127,7 +208,7 @@ def quartiles(to_show, nr_queries):
 
         if size > 4:
             size = 4
-        #size=4
+        
         endTimes = np.array_split(np.array([x[0] for x in endListOrdered]), size)
         startTimes = np.array_split(np.array([x[0] for x in startListOrdered]), size)
 
@@ -176,6 +257,13 @@ def quartiles(to_show, nr_queries):
 
 
 def avg_time(times):
+    """ Calculates the average time of a list of times
+    
+    Args:
+        times (:obj:`list` of :obj:`datetime.datetime`)
+    Returns:
+        :obj:`datetime.datetime`
+    """
     avg = 0
     for elem in times:
         avg += elem.second + 60*elem.minute + 3600*elem.hour

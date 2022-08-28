@@ -5,11 +5,12 @@ Contains class that orchestrates processing
 import re
 import json
 import glob 
+import tracktotrip as tt
+
 from os import listdir, stat, rename, replace, remove
 from shutil import copyfile
 from os.path import join, expanduser, isfile
 from collections import OrderedDict
-import tracktotrip as tt
 from tracktotrip.utils import pairwise, estimate_meters_to_deg
 from tracktotrip.location import infer_location
 from tracktotrip.learn_trip import learn_trip, complete_trip
@@ -19,15 +20,19 @@ from utils import update_dict
 
 from main.default_config import CONFIG
 
-#TODO docs
-
-def inside(to_find, modes, debug = False):
-    for elm in to_find:
-        if elm.lower() in modes:
-            return elm.lower()
-    return None
 
 def gte_time(small, big, debug = False):
+    """ Determines if time is greater or equal to another 
+    
+    Args:
+        small (:obj:`datetime.datetime`)
+        big (:obj:`datetime.datetime`)
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
+    Returns:
+        bool
+    """
+
     if small.hour < big.hour:
         return True
     elif small.hour == big.hour and small.minute <= big.minute:
@@ -36,16 +41,18 @@ def gte_time(small, big, debug = False):
         return False
 
 def is_time_between(lower, time, upper, debug):
+    """ Determines if time is between two other times 
+    
+    Args:
+        lower (:obj:`datetime.datetime`)
+        time (:obj:`datetime.datetime`): time to be compared
+        upper (:obj:`datetime.datetime`)
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
+    Returns:
+        bool
+    """
     return gte_time(lower, time, debug) and gte_time(time, upper, debug)
-
-def find_index_point(track, time, debug = False):
-    for j, segment in enumerate(track.segments):
-        i = 0
-        for p_a, p_b in pairwise(segment.points, debug):
-            if is_time_between(p_a.time, time, p_b.time, debug):
-                return (j, i)
-            i = i + 1
-    return None, None
 
 def save_to_file(path, content, mode="w"):
     """ Saves content to file
@@ -736,7 +743,6 @@ class ProcessingManager(object):
                     debug=self.debug
                 )
 
-            # db.insertStays(cur, trip, trips_ids, life)
             db.dispose(conn, cur)
 
         # Backup
@@ -852,6 +858,11 @@ class ProcessingManager(object):
         db.dispose(conn, cur)
 
     def update_config(self, new_config):
+        """ Updates the config object by overlapping with the new config object
+
+        Args:
+            new_config (obj): JSON object that contains configuration changes 
+        """
         update_dict(self.config, new_config)
         if self.current_step is Step.done:
             self.load_days()
@@ -893,6 +904,14 @@ class ProcessingManager(object):
         return locs.to_json()
 
     def get_canonical_trips(self):
+        """ Fetches all canonical trips from the database
+
+        See `db.get_canonical_trips`
+
+        Returns:
+            :obj:`list` of :obj:`dict`
+        """
+
         conn, cur = self.db_connect()
         result = []
         if conn and cur:
@@ -904,6 +923,14 @@ class ProcessingManager(object):
         return [r['points'] for r in result]
 
     def get_canonical_locations(self):
+        """ Fetches all canonical locations from the database
+
+        See `db.get_canonical_locations`
+
+        Returns:
+            :obj:`list` of :obj:`dict`
+        """
+
         conn, cur = self.db_connect()
         result = []
         if conn and cur:
@@ -915,6 +942,11 @@ class ProcessingManager(object):
         return [r['points'] for r in result]
 
     def dismiss_day(self, day):
+        """ Ignores a day in the queue
+        
+        Args:
+            day (str)
+        """
         existing_days = list(self.queue.keys())
         if day in existing_days:
             if day == self.current_day:
@@ -929,11 +961,21 @@ class ProcessingManager(object):
                 del self.queue[day]
 
     def remove_day(self, files):
+        """ Removes a day from the queue and deletes the corresponding input files
+        
+        Args:
+            files (:obj:`list` of :obj:`dict`)
+        """
         for file in files:
             self.dismiss_day(file["date"])
             remove(file["path"])
 
     def copy_day_to_input(self, day):
+        """ Copies an already processed day from the output folder to the input folder to be edited 
+        
+        Args:
+            day (str)
+        """
         #TODO take output name format into consideration (can be changed in config)
 
         # Get all files with day's date

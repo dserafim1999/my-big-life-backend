@@ -3,6 +3,7 @@
 Contains class that orchestrates general features
 """
 import json
+
 from os import remove
 from os.path import join, expanduser, isfile
 from life.life import Life
@@ -13,10 +14,11 @@ from main.default_config import CONFIG
 
 
 class MainManager(object):
-    """ 
-        
-    """
+    """ Manager that contains general features
 
+    Arguments:
+        configFile: configuration file directory 
+    """
     def __init__(self, config_file, debug):
         self.config = dict(CONFIG)
         self.configFile = config_file
@@ -29,6 +31,11 @@ class MainManager(object):
                 update_dict(self.config, config)
 
     def update_config(self, new_config):
+        """ Updates the config object by overlapping with the new config object
+
+        Args:
+            new_config (obj): JSON object that contains configuration changes 
+        """
         update_dict(self.config, new_config)
         with open(expanduser(self.configFile), 'w') as config_file:
             json.dump(self.config, config_file, indent=4)
@@ -49,8 +56,12 @@ class MainManager(object):
             return None, None
 
     def get_trips_and_locations(self):
-        """
-        TODO docs
+        """ Fetches canonical trips and locations from the database
+
+        See `db.get_canonical_trips` and `db.get_canonical_locations`
+
+        Returns:
+            :obj:`dict`
         """
 
         conn, cur = self.db_connect()
@@ -70,8 +81,18 @@ class MainManager(object):
         return {"trips": [r['points'] for r in trips], "locations": [r['point'] for r in locations]}
 
     def get_trips(self, latMin, lonMin, latMax, lonMax, canonical):
-        """
-        TODO docs
+        """ Fetches trips from the database in bounds
+
+        See `db.get_trips`
+
+        Args:
+            latMin (float): minimum latitude of bounds
+            lonMin (float): minimum longitude of bounds
+            latMax (float): maximum latitude of bounds
+            lonMax (float): minimum longitude of bounds
+            canonical (bool): determines whether the trips are canonical or not
+        Returns:
+            :obj:`dict`
         """
 
         conn, cur = self.db_connect()
@@ -88,8 +109,18 @@ class MainManager(object):
         return {"trips": [r['points'] for r in trips]}
 
     def get_more_trips(self, latMin, lonMin, latMax, lonMax, canonical):
-        """
-        TODO docs
+        """ Fetches trips from the database in bounds that have not yet been loaded
+
+        See `db.get_more_trips`
+
+        Args:
+            latMin (float): minimum latitude of bounds
+            lonMin (float): minimum longitude of bounds
+            latMax (float): maximum latitude of bounds
+            lonMax (float): minimum longitude of bounds
+            canonical (bool): determines whether the trips are canonical or not
+        Returns:
+            :obj:`dict`
         """
 
         conn, cur = self.db_connect()
@@ -107,8 +138,12 @@ class MainManager(object):
         return {"trips": [r['points'] for r in trips]}
 
     def get_all_trips(self):
-        """
-        TODO docs
+        """ Fetches all trips from the database
+
+        See `db.get_all_trips`
+
+        Returns:
+            :obj:`dict`
         """
 
         conn, cur = self.db_connect()
@@ -123,8 +158,12 @@ class MainManager(object):
         return {"trips": [r['points'] for r in trips]}
 
     def get_life_from_day(self, date):
-        """
-        TODO docs
+        """ Returns the LIFE representation of a day in the database
+
+        Args:
+            date (str)
+        Returns:
+            str
         """
 
         f = open(join(expanduser(self.config['life_all'])), "r")
@@ -136,8 +175,9 @@ class MainManager(object):
         return repr(life.day_at_date(date))
 
     def delete_day(self, date):
-        """
-        TODO docs
+        """ Deletes all data saved for a specific day, including track and LIFE files, as well as DB entries
+        Args:
+            date (str)
         """
 
         conn, cur = self.db_connect()
@@ -178,8 +218,10 @@ class MainManager(object):
                 dest_file.write(repr(lifes))
 
     def upload_file(self, file):
-        """
-        TODO docs
+        """ Creates a file using a JSON object
+
+        Args: 
+            file (:obj:`dict`): contains file name and data
         """
         
         f = open(join(expanduser(self.config['input_path']), file['name']), "w")

@@ -828,9 +828,3 @@ class Span:
                    ("[%s]" % "|".join(self.tags) if self.tags else "") + \
                    ("{%s}" % "|".join(self.semantics) if self.semantics else "") 
 
-
-
-
-
-# if __name__=="__main__":
-#     l=Life("location_semantics.txt")
