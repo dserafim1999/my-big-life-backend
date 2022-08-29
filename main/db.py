@@ -388,15 +388,15 @@ def insert_segment(cur, segment, max_distance, min_samples, debug = False):
         int: Segment id
     """
 
-    tstamps = [p.time.replace(second=0, microsecond=0) for p in segment.points]
+    tstamps = [p.time.replace(second=0, microsecond=0, tzinfo=None) for p in segment.points]
 
     cur.execute("""
             INSERT INTO trips (start_date, end_date, bounds, points, timestamps)
             VALUES (%s, %s, %s, %s, %s)
             RETURNING trip_id
             """, (
-                segment.points[0].time.replace(second=0, microsecond=0),
-                segment.points[-1].time.replace(second=0, microsecond=0),
+                segment.points[0].time.replace(second=0, microsecond=0, tzinfo=None),
+                segment.points[-1].time.replace(second=0, microsecond=0, tzinfo=None),
                 gis_bounds(segment.bounds(), debug),
                 segment,
                 tstamps
