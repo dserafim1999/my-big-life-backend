@@ -2,6 +2,7 @@
 """
 Contains class that orchestrates general features
 """
+from datetime import datetime
 import json
 
 from os import remove
@@ -189,19 +190,22 @@ class MainManager(object):
 
             db.dispose(conn, cur)
 
-        #delete output file (if exists)
-        #TODO take output name format into consideration (can be changed in config)
-        output_path = join(expanduser(self.config['output_path']), date + '.gpx')
+        day_datetime = datetime.strptime(date, "%Y-%m-%d")
+        
+        # Take output name format into consideration (format can be changed in config)
+        day = day_datetime.strftime(self.config['trip_name_format']) 
+
+        # Delete output file (if exists)
+        output_path = join(expanduser(self.config['output_path']), day + '.gpx')
         if isfile(output_path):
             remove(output_path)
 
-        #delete life file(if exists)
-        #TODO take life name format into consideration (can be changed in config)
-        life_path = join(expanduser(self.config['life_path']), date + '.life')
+        # Delete life file(if exists)
+        life_path = join(expanduser(self.config['life_path']), day + '.life')
         if isfile(life_path):
             remove(life_path)
             
-        #remove day from all.life
+        # Remove day from all.life
         if self.config['life_path']:
             if self.config['life_all']:
                 life_all_file = expanduser(self.config['life_all'])

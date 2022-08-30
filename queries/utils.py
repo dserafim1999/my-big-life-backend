@@ -6,9 +6,6 @@ import time
 
 import numpy as np
 
-#TODO docs
-
-
 def join_date_time(date, time): #join 01/01/2001 with 01:01 to a  datetime
     """ Joins date and time into a single timestamp, if date exists
     

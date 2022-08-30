@@ -9,6 +9,7 @@ import tracktotrip as tt
 
 from os import listdir, stat, rename, replace, remove
 from shutil import copyfile
+from datetime import datetime
 from os.path import join, expanduser, isfile
 from collections import OrderedDict
 from tracktotrip.utils import pairwise, estimate_meters_to_deg
@@ -977,10 +978,14 @@ class ProcessingManager(object):
         Args:
             day (str)
         """
-        #TODO take output name format into consideration (can be changed in config)
+        
+        day_datetime = datetime.strptime(day, "%Y-%m-%d")
+        
+        # Take output name format into consideration (format can be changed in config)
+        date = day_datetime.strftime(self.config['trip_name_format']) 
 
         # Get all files with day's date
-        output_files = glob.glob(self.config['output_path'] + f'{day}*')
+        output_files = glob.glob(self.config['output_path'] + f'{date}*')
 
         for day_gpx_path in output_files:
             file_name = day_gpx_path.replace(expanduser(self.config['output_path']), '') 
