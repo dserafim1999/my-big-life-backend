@@ -91,6 +91,7 @@ def upload_file():
 
     payload = request.get_json(force=True)
     manager.upload_file(payload)
+    processing_manager.update_day(payload["name"])
     return send_state()
 
 @app.route('/allTrips', methods=['GET'])

@@ -251,6 +251,7 @@ class ProcessingManager(object):
             gpxs_to_use = self.queue[key_to_use]
             gpxs_to_use = [tt.Track.from_gpx(gpx['path'], self.debug)[0] for gpx in gpxs_to_use]
 
+
             self.current_day = key_to_use
 
             segs = []
@@ -987,6 +988,22 @@ class ProcessingManager(object):
         
         self.reload_queue()
         self.change_day(day)
+
+    def update_day(self, filename):
+        """ Updates current day if a GPX file with the same date is inputted
+
+        Used when a file is dragged into the input folder using the frontend
+
+        Args:
+            filename (str): name of the inputted GPX file
+        """
+
+        self.reload_queue()
+        date = predict_start_date(self.config["input_path"] + filename)
+        day = date.strftime(self.config['trip_name_format'])
+
+        if day == self.current_day:
+            self.change_day(date.strftime(self.config['trip_name_format']))
         
         
         

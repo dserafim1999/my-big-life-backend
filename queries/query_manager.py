@@ -207,7 +207,7 @@ class QueryManager(object):
                         stays.append({"start": True, "time":item[0], "location": item[2]})
                         stays.append({"start": False, "time": item[1], "location": item[2]})
                     
-                results.append({"id": id, "result": result, "render": self.sort_render_data(stays, routes), 'multiple': len(result) > self.currentQuerySize, "querySize": self.currentQuerySize})
+                results.append({"id": id, "result": result, "render": self.sort_render_data(stays, routes), "multiple": len(result) > self.currentQuerySize, "querySize": self.currentQuerySize})
             i += 1
 
         self.loadMoreId += 1
