@@ -597,6 +597,50 @@ def get_trips(cur, bounding_box, canonical=False, debug = False):
     trips = cur.fetchall()
     return [{'id': t[0], 'points': to_segment(t[1], None if canonical else t[2], debug)} for t in trips]
 
+def can_get_more_trips(cur, bounding_box, loaded_bb, canonical=False, debug = False):
+    """ Checks whether there are trips in db that haven't been fetched yet in a certain bounding box
+
+    Args:
+        cur (:obj:`psycopg2.cursor`)
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
+    Returns:
+        :obj:`list` of :obj:`dict`:
+            [{ 'id': 1, 'points': <tracktotrip.Segment> }, ...]
+    """
+
+    if canonical:
+        cur.execute("""
+            WITH results as (
+                (SELECT canonical_id, points FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)) 
+                EXCEPT (
+                    (SELECT canonical_id, points FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
+                        INTERSECT 
+                    (SELECT canonical_id, points FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
+                )
+            ) SELECT count(1) FROM results
+        """, (  bounding_box[0]["lat"], bounding_box[0]["lon"], bounding_box[1]["lat"], bounding_box[1]["lon"],\
+                loaded_bb[0]["lat"], loaded_bb[0]["lon"], loaded_bb[1]["lat"], loaded_bb[1]["lon"],\
+                bounding_box[0]["lat"], bounding_box[0]["lon"], bounding_box[1]["lat"], bounding_box[1]["lon"]\
+            ))
+    else:
+        cur.execute("""
+            WITH results as (
+                (SELECT trip_id, points, timestamps FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)) 
+                EXCEPT (
+                    (SELECT trip_id, points, timestamps FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
+                        INTERSECT 
+                    (SELECT trip_id, points, timestamps FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
+                )
+            ) SELECT count(1) FROM results
+        """, (  bounding_box[0]["lat"], bounding_box[0]["lon"], bounding_box[1]["lat"], bounding_box[1]["lon"],\
+                loaded_bb[0]["lat"], loaded_bb[0]["lon"], loaded_bb[1]["lat"], loaded_bb[1]["lon"],\
+                bounding_box[0]["lat"], bounding_box[0]["lon"], bounding_box[1]["lat"], bounding_box[1]["lon"]\
+            ))
+
+    results = cur.fetchone()
+    return results[0] > 0
+
 def get_more_trips(cur, bounding_box, loaded_bb, canonical=False, debug = False):
     """ Gets trips in db that haven't been fetched yet
 

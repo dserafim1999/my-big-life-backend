@@ -109,6 +109,29 @@ class MainManager(object):
         db.dispose(conn, cur)
         return {"trips": [r['points'] for r in trips]}
 
+    def can_get_more_trips(self, latMin, lonMin, latMax, lonMax, canonical):
+        """ Checks whether there are trips in db that haven't been fetched yet in a certain bounding box
+
+        See `db.get_more_trips`
+
+        Args:
+            latMin (float): minimum latitude of bounds
+            lonMin (float): minimum longitude of bounds
+            latMax (float): maximum latitude of bounds
+            lonMax (float): minimum longitude of bounds
+            canonical (bool): determines whether the trips are canonical or not
+        Returns:
+            :obj:`dict`
+        """
+
+        conn, cur = self.db_connect()
+
+        if conn and cur:
+            can_load = db.can_get_more_trips(cur, [{"lat": latMin, "lon": lonMin}, {"lat": latMax, "lon": lonMax}], self.loadedBoundingBox, canonical, self.debug)
+
+        db.dispose(conn, cur)
+        return can_load
+
     def get_more_trips(self, latMin, lonMin, latMax, lonMax, canonical):
         """ Fetches trips from the database in bounds that have not yet been loaded
 

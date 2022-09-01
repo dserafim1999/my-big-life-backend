@@ -66,6 +66,23 @@ def get_trips():
     response = jsonify(manager.get_trips(latMin, lonMin, latMax, lonMax, canonical))
     return set_headers(response)
 
+@app.route('/hasMoreTrips', methods=['GET'])
+def can_get_more_trips():
+    """ Loads more trips in bounds
+    Returns:
+        :obj:`flask.response`
+    """
+
+    latMin = request.args.get('latMin')
+    lonMin = request.args.get('lonMin')
+    latMax = request.args.get('latMax')
+    lonMax = request.args.get('lonMax')
+    canonical = request.args.get('canonical') == 'true'
+    
+    response =  jsonify(manager.can_get_more_trips(latMin, lonMin, latMax, lonMax, canonical))
+
+    return set_headers(response)
+
 @app.route('/moreTrips', methods=['GET'])
 def get_more_trips():
     """ Loads more trips in bounds
