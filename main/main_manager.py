@@ -169,11 +169,26 @@ class MainManager(object):
 
         f = open(join(expanduser(self.config['life_all'])), "r")
         raw_life = f.read()
+        f.close()
 
         life = Life()
         life.from_string(raw_life.split('\n'))
 
         return repr(life.day_at_date(date))
+
+    def get_life(self):
+        """ Returns the global LIFE file string
+
+        Returns:
+            str
+        """
+
+        f = open(join(expanduser(self.config['life_all'])), "r")
+        life_str = f.read()
+        f.close()
+
+        return life_str
+        
 
     def delete_day(self, date):
         """ Deletes all data saved for a specific day, including track and LIFE files, as well as DB entries

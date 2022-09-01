@@ -138,6 +138,16 @@ def get_life_from_day():
 
     return set_headers(response)
 
+@app.route('/life', methods=['GET'])
+def get_life():
+    """ Loads global LIFE file 
+        :obj:`flask.response`
+    """
+    
+    response = jsonify(manager.get_life())
+
+    return set_headers(response)
+
 @app.route('/deleteDay', methods=['POST'])
 def delete_day():
     """ Deletes a day from the database and existing files
