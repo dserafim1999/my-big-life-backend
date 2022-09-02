@@ -458,7 +458,7 @@ class ProcessingManager(object):
         self.is_bulk_processing = True
 
         all_lifes = [open(expanduser(join(self.config['input_path'], f)), 'r', encoding='utf8').read() for f in self.life_queue]
-        all_lifes = '\n'.join(all_lifes)
+        all_lifes = ''.join(all_lifes)
 
         lifes = Life()
         lifes.from_string(all_lifes)
@@ -493,7 +493,7 @@ class ProcessingManager(object):
         self.is_bulk_processing = True
         
         all_lifes = [open(expanduser(join(self.config['input_path'], f)), 'r', encoding='utf8').read() for f in self.life_queue]
-        all_lifes = '\n'.join(all_lifes)
+        all_lifes = ''.join(all_lifes)
 
         lifes = Life()
         lifes.from_string(all_lifes)
@@ -511,7 +511,7 @@ class ProcessingManager(object):
                 life_all_file = expanduser(self.config['life_all'])
             else:
                 life_all_file = join(expanduser(self.config['life_path']), 'all.life')
-            save_to_file(life_all_file, "\n\n%s" % all_lifes, mode='a+')
+            save_to_file(life_all_file, "%s\n" % all_lifes, mode='a+')
 
         for life_file in self.life_queue:
             life_path = join(expanduser(self.config['input_path']), life_file)
@@ -668,7 +668,7 @@ class ProcessingManager(object):
                 lifes.update_day_from_string(life_date, life)
                 save_to_file(life_all_file, repr(lifes))
             else:
-                save_to_file(life_all_file, "\n\n%s" % life, mode='a+')
+                save_to_file(life_all_file, "%s\n" % life, mode='a+')
 
         conn, cur = self.db_connect()
 
