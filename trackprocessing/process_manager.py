@@ -178,6 +178,7 @@ class ProcessingManager(object):
                 update_dict(self.config, config)
 
         self.is_bulk_processing = False
+        self.bulk_progress = -1
         self.queue = {}
         self.life_queue = []
         self.current_step = None
@@ -449,6 +450,11 @@ class ProcessingManager(object):
 
         return self.current_track()
 
+    def get_bulk_progress(self):
+        """ Returns bulk processing progress status
+        """
+
+        return {"progress": self.bulk_progress}
 
     def bulk_process(self):
         """ Starts bulk processing all GPXs queued
@@ -456,6 +462,7 @@ class ProcessingManager(object):
         processed = 1
         total_num_days = len(list(self.queue.values()))
         self.is_bulk_processing = True
+        self.bulk_progress = 0
 
         all_lifes = [open(expanduser(join(self.config['input_path'], f)), 'r', encoding='utf8').read() for f in self.life_queue]
         all_lifes = ''.join(all_lifes)
@@ -473,6 +480,7 @@ class ProcessingManager(object):
             self.process({'changes': [], 'LIFE': str(life)})
 
             print(f"{processed}/{total_num_days} days processed")
+            self.bulk_progress = (processed / total_num_days) * 100
             processed += 1
 
         for life_file in self.life_queue:
@@ -483,6 +491,7 @@ class ProcessingManager(object):
         self.life_queue = []
 
         self.is_bulk_processing = False
+        self.bulk_progress = -1
     
     def raw_bulk_process(self):
         """ Starts bulk processing all GPXs queued with no preprocessing
@@ -491,7 +500,8 @@ class ProcessingManager(object):
         total_num_days = len(list(self.queue.values()))
         
         self.is_bulk_processing = True
-        
+        self.bulk_progress = 0
+
         all_lifes = [open(expanduser(join(self.config['input_path'], f)), 'r', encoding='utf8').read() for f in self.life_queue]
         all_lifes = ''.join(all_lifes)
 
@@ -504,6 +514,7 @@ class ProcessingManager(object):
             self.raw_process(str(life))
 
             print(f"{processed}/{total_num_days} days processed")
+            self.bulk_progress = (processed / total_num_days) * 100
             processed += 1
 
         if self.config['life_path']:
@@ -521,6 +532,7 @@ class ProcessingManager(object):
         self.life_queue = []
 
         self.is_bulk_processing = False
+        self.bulk_progress = -1
 
     def preview_to_adjust(self, track):
         """ Processes a track so that it becomes a trip
@@ -796,7 +808,8 @@ class ProcessingManager(object):
             'track': current.to_json() if current else None,
             'life': self.get_life(current) if current and self.current_step is Step.annotate else '',
             'currentDay': self.current_day,
-            'lifeQueue': self.life_queue
+            'lifeQueue': self.life_queue,
+            'isBulkProcessing': self.is_bulk_processing
         }
 
     def get_life(self, track):

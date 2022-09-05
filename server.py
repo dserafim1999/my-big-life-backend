@@ -242,6 +242,17 @@ def reload_queue():
     processing_manager.reload_queue()
     return send_state()
 
+@app.route('/process/bulkProgress', methods=['GET'])
+def bulk_progress():
+    """ Returns bulk processing progress status
+
+    Returns:
+        :obj:`flask.response`
+    """
+    response = jsonify(processing_manager.get_bulk_progress())
+    return set_headers(response)
+
+
 @app.route('/process/bulk', methods=['GET'])
 def bulk_process():
     """ Starts bulk processing
