@@ -9,7 +9,7 @@ import tracktotrip as tt
 
 from os import listdir, stat, rename, replace, remove
 from shutil import copyfile
-from datetime import datetime
+from datetime import date, datetime
 from os.path import join, expanduser, isfile
 from collections import OrderedDict
 from tracktotrip.utils import pairwise, estimate_meters_to_deg
@@ -20,7 +20,6 @@ from life.life import Life
 from utils import update_dict
 
 from main.default_config import CONFIG
-
 
 def gte_time(small, big, debug = False):
     """ Determines if time is greater or equal to another 
@@ -168,7 +167,7 @@ class ProcessingManager(object):
             folder
     """
 
-    def __init__(self, config_file, debug):
+    def __init__(self, config_file, metrics, debug):
         self.config = dict(CONFIG)
         self.debug = debug
 
@@ -186,6 +185,9 @@ class ProcessingManager(object):
         self.current_day = None
         self.debug = debug
         self.reset()
+
+        self.use_metrics = metrics
+        self.metrics = []
 
     def list_gpxs(self):
         """ Lists gpx files from the input path, and some details
@@ -450,6 +452,16 @@ class ProcessingManager(object):
 
         return self.current_track()
 
+    def edit_latest_metrics(self, key, value):
+        """ Adds a new key/value pair to the latest metrics object in the metrics array
+        
+        Args:
+            key (:str) Key to add
+            value (:obj) Value to add
+        """
+        if self.use_metrics:
+            self.metrics[-1][key] = value
+
     def get_bulk_progress(self):
         """ Returns bulk processing progress status
         """
@@ -470,7 +482,10 @@ class ProcessingManager(object):
         lifes = Life()
         lifes.from_string(all_lifes)
 
+        start_time = datetime.now().timestamp()
         while len(list(self.queue.values())) > 0:
+            start = datetime.now().timestamp() - start_time
+            
             life = next((day for day in lifes if day.date == self.current_day.replace("-", "_")), "")
             # preview -> adjust
             self.process({'changes': [], 'LIFE': ''})
@@ -478,6 +493,11 @@ class ProcessingManager(object):
             self.process({'changes': [], 'LIFE': ''})
             # annotate -> store
             self.process({'changes': [], 'LIFE': str(life)})
+
+            # Register metrics
+            if self.use_metrics:
+                self.metrics.append({"start": start, "day": processed}) # start represents seconds since bulk processing started
+                self.edit_latest_metrics("duration", (datetime.now().timestamp() - start_time) - start)
 
             print(f"{processed}/{total_num_days} days processed")
             self.bulk_progress = (processed / total_num_days) * 100
@@ -489,6 +509,11 @@ class ProcessingManager(object):
             rename(life_path, backup_path)
 
         self.life_queue = []
+
+        if self.use_metrics:
+            with open('metrics.json', 'w') as metrics_file:
+                json.dump(self.metrics, metrics_file)
+            self.metrics = []
 
         self.is_bulk_processing = False
         self.bulk_progress = -1
@@ -508,12 +533,20 @@ class ProcessingManager(object):
         lifes = Life()
         lifes.from_string(all_lifes)
 
+        start_time = datetime.now().timestamp()
         while len(list(self.queue.values())) > 0:
+            start = datetime.now().timestamp() - start_time
+            
             # annotate -> store
             life = next((day for day in lifes if day.date == self.current_day.replace("-", "_")), "")
             self.raw_process(str(life))
 
+            # Register metrics
+            if self.use_metrics:
+                self.metrics.append({"start": start, "day": processed}) # start represents seconds since bulk processing started
+                self.edit_latest_metrics("duration", (datetime.now().timestamp() - start_time) - start)
             print(f"{processed}/{total_num_days} days processed")
+
             self.bulk_progress = (processed / total_num_days) * 100
             processed += 1
 
@@ -530,6 +563,10 @@ class ProcessingManager(object):
             rename(life_path, backup_path)
 
         self.life_queue = []
+
+        if self.use_metrics:
+            with open('metrics.json', 'w') as metrics_file:
+                json.dump(self.metrics, metrics_file)
 
         self.is_bulk_processing = False
         self.bulk_progress = -1
@@ -646,6 +683,14 @@ class ProcessingManager(object):
         # Is editing if a file exists in output with the day's date
         output_files = glob.glob(self.config['output_path'] + f'{track.name}*')
         is_edit = len(output_files) > 0
+
+        # Metrics
+
+        if self.use_metrics:
+            n_points = sum([len(segment.points) for segment in track.segments])
+            
+            self.edit_latest_metrics("segments", len(track.segments))
+            self.edit_latest_metrics("points", n_points)
 
         # Export trip to GPX
         if self.config['output_path']:

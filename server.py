@@ -11,7 +11,7 @@ from queries.query_manager import QueryManager
 from trackprocessing.process_manager import ProcessingManager
 from main.main_manager import MainManager
 
-parser = argparse.ArgumentParser(description='Starts the server to process tracks')
+parser = argparse.ArgumentParser(description='Starts the server that manages/processes tracks')
 parser.add_argument('-p', '--port', dest='port', metavar='p', type=int,
         default=5000,
         help='port to use')
@@ -26,13 +26,16 @@ parser.add_argument('--verbose', dest='verbose',
         help='print debug information of processing stage')
 parser.add_argument('--config', '-c', dest='config', metavar='c', type=str,
         help='configuration file')
+parser.add_argument('--metrics', '-m', dest='metrics', metavar='m', type=bool,
+        help='register processing metrics')
 args = parser.parse_args()
 
 app = Flask(__name__)
-# socketio = SocketIO(app)
+
+processing_metrics = args.metrics if args.metrics != None else False
 
 manager = MainManager(args.config, args.debug)
-processing_manager = ProcessingManager(args.config, args.debug)
+processing_manager = ProcessingManager(args.config, args.metrics, args.debug)
 query_manager = QueryManager(args.config, args.debug)
 
 
