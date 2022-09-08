@@ -405,6 +405,12 @@ class ProcessingManager(object):
             simplify_max_dist_error=config['simplification']['max_dist_error'],
             simplify_max_speed_error=config['simplification']['max_speed_error']
         )
+
+        if self.use_metrics:
+            n_points = sum([len(segment.points) for segment in track.segments])
+            
+            self.edit_latest_metrics("segments", len(track.segments))
+            self.edit_latest_metrics("points", n_points)
         
         # Backup trips and move to output
         if self.config['backup_path']:
@@ -459,6 +465,7 @@ class ProcessingManager(object):
             key (:str) Key to add
             value (:obj) Value to add
         """
+
         if self.use_metrics:
             self.metrics[-1][key] = value
 
@@ -476,6 +483,9 @@ class ProcessingManager(object):
         self.is_bulk_processing = True
         self.bulk_progress = 0
 
+        if self.use_metrics:
+            self.metrics = [] 
+
         all_lifes = [open(expanduser(join(self.config['input_path'], f)), 'r', encoding='utf8').read() for f in self.life_queue]
         all_lifes = ''.join(all_lifes)
 
@@ -485,6 +495,9 @@ class ProcessingManager(object):
         start_time = datetime.now().timestamp()
         while len(list(self.queue.values())) > 0:
             start = datetime.now().timestamp() - start_time
+            
+            if self.use_metrics:
+                self.metrics.append({})
             
             life = next((day for day in lifes if day.date == self.current_day.replace("-", "_")), "")
             # preview -> adjust
@@ -496,7 +509,8 @@ class ProcessingManager(object):
 
             # Register metrics
             if self.use_metrics:
-                self.metrics.append({"start": start, "day": processed}) # start represents seconds since bulk processing started
+                self.edit_latest_metrics("start", start) # start represents seconds since bulk processing started
+                self.edit_latest_metrics("day", processed)
                 self.edit_latest_metrics("duration", (datetime.now().timestamp() - start_time) - start)
 
             print(f"{processed}/{total_num_days} days processed")
@@ -527,6 +541,9 @@ class ProcessingManager(object):
         self.is_bulk_processing = True
         self.bulk_progress = 0
 
+        if self.use_metrics:
+            self.metrics = [] 
+
         all_lifes = [open(expanduser(join(self.config['input_path'], f)), 'r', encoding='utf8').read() for f in self.life_queue]
         all_lifes = ''.join(all_lifes)
 
@@ -537,14 +554,19 @@ class ProcessingManager(object):
         while len(list(self.queue.values())) > 0:
             start = datetime.now().timestamp() - start_time
             
+            if self.use_metrics:
+                self.metrics.append({})
+
             # annotate -> store
             life = next((day for day in lifes if day.date == self.current_day.replace("-", "_")), "")
             self.raw_process(str(life))
 
             # Register metrics
             if self.use_metrics:
-                self.metrics.append({"start": start, "day": processed}) # start represents seconds since bulk processing started
+                self.edit_latest_metrics("start", start) # start represents seconds since bulk processing started
+                self.edit_latest_metrics("day", processed)
                 self.edit_latest_metrics("duration", (datetime.now().timestamp() - start_time) - start)
+
             print(f"{processed}/{total_num_days} days processed")
 
             self.bulk_progress = (processed / total_num_days) * 100
