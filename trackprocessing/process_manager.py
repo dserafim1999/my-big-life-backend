@@ -365,7 +365,7 @@ class ProcessingManager(object):
         elif step == Step.annotate:
             if not life or len(life) == 0:
                 life = track.to_life(self.config["trip_annotations"])
-            return self.annotate_to_next(track, life)
+            return self.annotate_to_next(track, life, data['raw'])
         else:
             return None
 
@@ -375,89 +375,6 @@ class ProcessingManager(object):
 
         return result
     
-    def raw_process(self, life):
-        """ Stores the track and dequeues another track to be
-        processed.
-
-        Moves the current GPX file from the input path to the
-        output and backup path, creates a LIFE file in the life path
-        and creates a trip entry in the database.
-
-        Args:
-            track (:obj:tracktotrip.Track`)
-            changes (:obj:`list` of :obj:`dict`): Details of, user made, changes
-        """
-        config = self.config
-
-        track = self.current_track().copy()
-
-        if not track.name or len(track.name) == 0:
-            track.name = track.generate_name(self.config['trip_name_format'])
-
-        track = track.to_trip(
-            smooth=config['smoothing']['use'],
-            smooth_strategy=config['smoothing']['algorithm'],
-            smooth_noise=config['smoothing']['noise'],
-            seg=config['segmentation']['use'],
-            seg_eps=config['segmentation']['epsilon'],
-            seg_min_time=config['segmentation']['min_time'],
-            simplify=config['simplification']['use'],
-            simplify_max_dist_error=config['simplification']['max_dist_error'],
-            simplify_max_speed_error=config['simplification']['max_speed_error']
-        )
-
-        if self.use_metrics:
-            n_points = sum([len(segment.points) for segment in track.segments])
-            
-            self.edit_latest_metrics("segments", len(track.segments))
-            self.edit_latest_metrics("points", n_points)
-        
-        # Backup trips and move to output
-        if self.config['backup_path']:
-            for gpx in self.queue[self.current_day]:
-                input_path = gpx['path']
-                backup_path = join(expanduser(self.config['backup_path']), gpx['name'])
-                copyfile(input_path, backup_path)
-
-                if self.config['output_path']:
-                        output_path = join(expanduser(self.config['output_path']), gpx['name'])
-                        rename(input_path, output_path)
-        
-
-        # To LIFE
-        if self.config['life_path'] and life:
-            name = '.'.join(track.name.split('.')[:-1])
-            save_to_file(join(expanduser(self.config['life_path']), name), life)
-
-        conn, cur = self.db_connect()
-
-        if conn and cur:
-            db.load_from_segments_annotated(
-                cur,
-                self.current_track(),
-                life,
-                self.config['location']['max_distance'],
-                self.config['location']['min_samples'],
-                True,
-                self.debug
-            )
-
-            for trip in track.segments:
-                # To database
-                db.insert_segment(
-                    cur,
-                    trip,
-                    self.config['location']['max_distance'],
-                    self.config['location']['min_samples'],
-                    self.debug
-                )
-
-            db.dispose(conn, cur)
-
-        self.next_day()
-
-        return self.current_track()
-
     def edit_latest_metrics(self, key, value):
         """ Adds a new key/value pair to the latest metrics object in the metrics array
         
@@ -475,7 +392,7 @@ class ProcessingManager(object):
 
         return {"progress": self.bulk_progress}
 
-    def bulk_process(self):
+    def bulk_process(self, raw):
         """ Starts bulk processing all GPXs queued
         """
         processed = 1
@@ -505,7 +422,7 @@ class ProcessingManager(object):
             # adjust -> annotate
             self.process({'changes': [], 'LIFE': ''})
             # annotate -> store
-            self.process({'changes': [], 'LIFE': str(life)})
+            self.process({'changes': [], 'LIFE': str(life), 'raw': raw})
 
             # Register metrics
             if self.use_metrics:
@@ -531,68 +448,7 @@ class ProcessingManager(object):
 
         self.is_bulk_processing = False
         self.bulk_progress = -1
-    
-    def raw_bulk_process(self):
-        """ Starts bulk processing all GPXs queued with no preprocessing
-        """
-        processed = 1
-        total_num_days = len(list(self.queue.values()))
-        
-        self.is_bulk_processing = True
-        self.bulk_progress = 0
-
-        if self.use_metrics:
-            self.metrics = [] 
-
-        all_lifes = [open(expanduser(join(self.config['input_path'], f)), 'r', encoding='utf8').read() for f in self.life_queue]
-        all_lifes = ''.join(all_lifes)
-
-        lifes = Life()
-        lifes.from_string(all_lifes)
-
-        start_time = datetime.now().timestamp()
-        while len(list(self.queue.values())) > 0:
-            start = datetime.now().timestamp() - start_time
-            
-            if self.use_metrics:
-                self.metrics.append({})
-
-            # annotate -> store
-            life = next((day for day in lifes if day.date == self.current_day.replace("-", "_")), "")
-            self.raw_process(str(life))
-
-            # Register metrics
-            if self.use_metrics:
-                self.edit_latest_metrics("start", start) # start represents seconds since bulk processing started
-                self.edit_latest_metrics("day", processed)
-                self.edit_latest_metrics("duration", (datetime.now().timestamp() - start_time) - start)
-
-            print(f"{processed}/{total_num_days} days processed")
-
-            self.bulk_progress = (processed / total_num_days) * 100
-            processed += 1
-
-        if self.config['life_path']:
-            if self.config['life_all']:
-                life_all_file = expanduser(self.config['life_all'])
-            else:
-                life_all_file = join(expanduser(self.config['life_path']), 'all.life')
-            save_to_file(life_all_file, "%s\n" % all_lifes, mode='a+')
-
-        for life_file in self.life_queue:
-            life_path = join(expanduser(self.config['input_path']), life_file)
-            backup_path = join(expanduser(self.config['backup_path']), life_file)
-            rename(life_path, backup_path)
-
-        self.life_queue = []
-
-        if self.use_metrics:
-            with open('metrics.json', 'w') as metrics_file:
-                json.dump(self.metrics, metrics_file)
-
-        self.is_bulk_processing = False
-        self.bulk_progress = -1
-
+ 
     def preview_to_adjust(self, track):
         """ Processes a track so that it becomes a trip
 
@@ -685,7 +541,7 @@ class ProcessingManager(object):
         else:
             return None, None
 
-    def annotate_to_next(self, track, life):
+    def annotate_to_next(self, track, life, calculate_canonical=True):
         """ Stores the track and dequeues another track to be
         processed.
 
@@ -697,6 +553,7 @@ class ProcessingManager(object):
         Args:
             track (:obj:tracktotrip.Track`)
             changes (:obj:`list` of :obj:`dict`): Details of, user made, changes
+            calculate_canonical (bool): If true, calculates canonical trips and locations 
         """
 
         if not track.name or len(track.name) == 0:
@@ -747,7 +604,7 @@ class ProcessingManager(object):
                 lifes.update_day_from_string(life_date, life)
                 save_to_file(life_all_file, repr(lifes))
             else:
-                save_to_file(life_all_file, "%s\n" % life, mode='a+')
+                save_to_file(life_all_file, "%s\n\n" % life, mode='a+')
 
         conn, cur = self.db_connect()
 
@@ -806,23 +663,24 @@ class ProcessingManager(object):
                 )
                 trips_ids.append(trip_id)
 
-                d_latlon = estimate_meters_to_deg(self.config['location']['max_distance'], debug=self.debug)
-                # Build/learn canonical trip
-                canonical_trips = db.match_canonical_trip(cur, trip, d_latlon, self.debug)
+                if not calculate_canonical:
+                    d_latlon = estimate_meters_to_deg(self.config['location']['max_distance'], debug=self.debug)
+                    # Build/learn canonical trip
+                    canonical_trips = db.match_canonical_trip(cur, trip, d_latlon, self.debug)
 
-                if self.debug:
-                    print("canonical_trips # = %d" % len(canonical_trips))
+                    if self.debug:
+                        print("canonical_trips # = %d" % len(canonical_trips))
 
-                learn_trip(
-                    trip,
-                    trip_id,
-                    canonical_trips,
-                    insert_can_trip,
-                    update_can_trip,
-                    self.config['simplification']['eps'],
-                    d_latlon,
-                    debug=self.debug
-                )
+                    learn_trip(
+                        trip,
+                        trip_id,
+                        canonical_trips,
+                        insert_can_trip,
+                        update_can_trip,
+                        self.config['simplification']['eps'],
+                        d_latlon,
+                        debug=self.debug
+                    )
 
             db.dispose(conn, cur)
 

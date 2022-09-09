@@ -263,7 +263,7 @@ def bulk_process():
     Returns:
         :obj:`flask.response`
     """
-    processing_manager.bulk_process()
+    processing_manager.bulk_process(raw=False)
     return send_state()
 
 @app.route('/process/rawBulk', methods=['GET'])
@@ -272,7 +272,7 @@ def raw_bulk_process():
     Returns:
         :obj:`flask.response`
     """
-    processing_manager.raw_bulk_process()
+    processing_manager.bulk_process(raw=True)
     return send_state()
 
 @app.route('/process/loadLIFE', methods=['POST'])
