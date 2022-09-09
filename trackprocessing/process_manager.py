@@ -365,7 +365,7 @@ class ProcessingManager(object):
         elif step == Step.annotate:
             if not life or len(life) == 0:
                 life = track.to_life(self.config["trip_annotations"])
-            return self.annotate_to_next(track, life, data['raw'])
+            return self.annotate_to_next(track, life, data['calculate_canonical'])
         else:
             return None
 
@@ -422,7 +422,7 @@ class ProcessingManager(object):
             # adjust -> annotate
             self.process({'changes': [], 'LIFE': ''})
             # annotate -> store
-            self.process({'changes': [], 'LIFE': str(life), 'raw': raw})
+            self.process({'changes': [], 'LIFE': str(life), 'calculate_canonical': self.config["bulk_calculate_canonical"]})
 
             # Register metrics
             if self.use_metrics:
@@ -663,7 +663,7 @@ class ProcessingManager(object):
                 )
                 trips_ids.append(trip_id)
 
-                if not calculate_canonical:
+                if calculate_canonical:
                     d_latlon = estimate_meters_to_deg(self.config['location']['max_distance'], debug=self.debug)
                     # Build/learn canonical trip
                     canonical_trips = db.match_canonical_trip(cur, trip, d_latlon, self.debug)

@@ -17,7 +17,7 @@ CONFIG = {
     },
     'default_timezone': 0,
     'trip_annotations': False,
-    'bulk_uses_processing': True,
+    'bulk_calculate_canonical': True,
     'load_more_amount': 10,
     'trip_name_format': '%Y-%m-%d',
     'multiple_gpxs_for_day': False,
