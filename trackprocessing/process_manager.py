@@ -395,6 +395,9 @@ class ProcessingManager(object):
     def bulk_process(self, raw):
         """ Starts bulk processing all GPXs queued
         """
+
+        self.reload_queue()
+
         processed = 1
         total_num_days = len(list(self.queue.values()))
         self.is_bulk_processing = True
