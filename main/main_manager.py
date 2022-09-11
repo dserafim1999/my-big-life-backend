@@ -70,16 +70,13 @@ class MainManager(object):
         if conn and cur:
             trips = db.get_canonical_trips(cur, self.debug)
             locations = db.get_canonical_locations(cur, self.debug)
-        for val in trips:
-            val['points'] = val['points'].to_json()
-            val['points']['id'] = val['id']
         for val in locations:
             val['point'] = val['point'].to_json()
             val['point']['label'] = val['label']
             val['point']['id'] = val['id']
 
         db.dispose(conn, cur)
-        return {"trips": [r['points'] for r in trips], "locations": [r['point'] for r in locations]}
+        return {"trips": trips, "locations": [r['point'] for r in locations]}
 
     def get_trips(self, latMin, lonMin, latMax, lonMax, canonical):
         """ Fetches trips from the database in bounds
@@ -102,12 +99,8 @@ class MainManager(object):
         if conn and cur:
             trips = db.get_trips(cur, self.loadedBoundingBox, canonical, self.debug)
 
-        for val in trips:
-            val['points'] = val['points'].to_json()
-            val['points']['id'] = val['id']
-
         db.dispose(conn, cur)
-        return {"trips": [r['points'] for r in trips]}
+        return {"trips": trips}
 
     def can_get_more_trips(self, latMin, lonMin, latMax, lonMax, canonical):
         """ Checks whether there are trips in db that haven't been fetched yet in a certain bounding box
@@ -152,14 +145,10 @@ class MainManager(object):
         if conn and cur:
             trips = db.get_more_trips(cur, [{"lat": latMin, "lon": lonMin}, {"lat": latMax, "lon": lonMax}], self.loadedBoundingBox, canonical, self.debug)
 
-        for val in trips:
-            val['points'] = val['points'].to_json()
-            val['points']['id'] = val['id']
-
         self.loadedBoundingBox = merge_bounding_boxes([{"lat": latMin, "lon": lonMin}, {"lat": latMax, "lon": lonMax}], self.loadedBoundingBox) 
 
         db.dispose(conn, cur)
-        return {"trips": [r['points'] for r in trips]}
+        return {"trips": trips}
 
     def get_all_trips(self):
         """ Fetches all trips from the database
@@ -174,12 +163,8 @@ class MainManager(object):
         if conn and cur:
             trips = db.get_all_trips(cur, self.debug)
 
-        for val in trips:
-            val['points'] = val['points'].to_json()
-            val['points']['id'] = val['id']
-
         db.dispose(conn, cur)
-        return {"trips": [r['points'] for r in trips]}
+        return {"trips": trips}
 
     def get_life_from_day(self, date):
         """ Returns the LIFE representation of a day in the database
