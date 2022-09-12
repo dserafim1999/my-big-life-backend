@@ -174,7 +174,6 @@ class MainManager(object):
         Returns:
             str
         """
-
         f = open(join(expanduser(self.config['life_all'])), "r")
         raw_life = f.read()
         f.close()
@@ -182,6 +181,7 @@ class MainManager(object):
         life = Life()
         life.from_string(raw_life.split('\n'))
 
+        date = date.replace("-", "_")
         return repr(life.day_at_date(date))
 
     def get_life(self):
