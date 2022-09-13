@@ -127,8 +127,6 @@ class Life:
         for d in self.days:
             if d.date==date:
                 return d
-            elif d.date>date:
-                return None
         return None
 
     def update_day_from_string(self, date, content):
