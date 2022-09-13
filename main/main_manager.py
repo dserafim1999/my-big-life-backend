@@ -66,17 +66,44 @@ class MainManager(object):
         """
 
         conn, cur = self.db_connect()
-        result = []
         if conn and cur:
             trips = db.get_canonical_trips(cur, self.debug)
             locations = db.get_canonical_locations(cur, self.debug)
-        for val in locations:
-            val['point'] = val['point'].to_json()
-            val['point']['label'] = val['label']
-            val['point']['id'] = val['id']
 
         db.dispose(conn, cur)
-        return {"trips": trips, "locations": [r['point'] for r in locations]}
+        return {"trips": trips, "locations": locations}
+
+    def get_locations(self):
+        """ Fetches canonical locations from the database
+
+        See `db.get_canonical_locations`
+
+        Returns:
+            :obj:`dict`
+        """
+
+        conn, cur = self.db_connect()
+        if conn and cur:
+            locations = db.get_canonical_locations(cur, self.debug)
+
+        db.dispose(conn, cur)
+        return {"locations": locations}
+
+    def get_canonical_trips(self):
+        """ Fetches canonical trips from the database
+
+        See `db.get_canonical_trips`
+
+        Returns:
+            :obj:`dict`
+        """
+
+        conn, cur = self.db_connect()
+        if conn and cur:
+            trips = db.get_canonical_trips(cur, self.debug)
+
+        db.dispose(conn, cur)
+        return {"trips": trips}
 
     def get_trips(self, latMin, lonMin, latMax, lonMax, canonical):
         """ Fetches trips from the database in bounds

@@ -45,12 +45,32 @@ query_manager = QueryManager(args.config, args.debug)
 
 @app.route('/tripsLocations', methods=['GET'])
 def get_trips_and_locations():
-    """ Gets canoncial trips and locations
+    """ Gets canonical trips and locations
     Returns:
         :obj:`flask.response`
     """
 
     response = jsonify(manager.get_trips_and_locations())
+    return set_headers(response)
+
+@app.route('/locations', methods=['GET'])
+def get_locations():
+    """ Gets canonical locations
+    Returns:
+        :obj:`flask.response`
+    """
+
+    response = jsonify(manager.get_locations())
+    return set_headers(response)
+
+@app.route('/canonicalTrips', methods=['GET'])
+def get_canonical_trips():
+    """ Gets canonical trips
+    Returns:
+        :obj:`flask.response`
+    """
+
+    response = jsonify(manager.get_canonical_trips())
     return set_headers(response)
 
 @app.route('/trips', methods=['GET'])
@@ -287,26 +307,6 @@ def location_suggestion():
     lat = float(request.args.get('lat'))
     lon = float(request.args.get('lon'))
     response = jsonify(processing_manager.location_suggestion(Point(lat, lon, None)))
-    return set_headers(response)
-
-@app.route('/process/canonicalTrips', methods=['GET'])
-def get_canonical_trips():
-    """ Loads all canonical trips
-    Returns:
-        :obj:`flask.response`
-    """
-
-    response = jsonify(processing_manager.get_canonical_trips())
-    return set_headers(response)
-
-@app.route('/process/canonicalLocations', methods=['GET'])
-def get_canonical_locations():
-    """ Loads all canonical locations
-    Returns:
-        :obj:`flask.response`
-    """
-
-    response = jsonify(processing_manager.get_canonical_locations())
     return set_headers(response)
 
 @app.route('/process/dismissDay', methods=['POST'])
