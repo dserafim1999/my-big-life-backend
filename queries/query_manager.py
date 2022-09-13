@@ -138,7 +138,7 @@ class QueryManager(object):
                     id = result[i]
                     start_date = result[i+1]
                     end_date = result[i+2]
-                    points = {"id": id, "geoJSON": json.loads(result[i+3])}
+                    points = {"id": start_date, "geoJSON": json.loads(result[i+3])}
 
                     if (i/5) % 2 != 0: # route points
                         results.append(ResultInterval(id, start_date, end_date, None, points))
