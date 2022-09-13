@@ -66,20 +66,44 @@ class MainManager(object):
         """
 
         conn, cur = self.db_connect()
-        result = []
         if conn and cur:
             trips = db.get_canonical_trips(cur, self.debug)
             locations = db.get_canonical_locations(cur, self.debug)
-        for val in trips:
-            val['points'] = val['points'].to_json()
-            val['points']['id'] = val['id']
-        for val in locations:
-            val['point'] = val['point'].to_json()
-            val['point']['label'] = val['label']
-            val['point']['id'] = val['id']
 
         db.dispose(conn, cur)
-        return {"trips": [r['points'] for r in trips], "locations": [r['point'] for r in locations]}
+        return {"trips": trips, "locations": locations}
+
+    def get_locations(self):
+        """ Fetches canonical locations from the database
+
+        See `db.get_canonical_locations`
+
+        Returns:
+            :obj:`dict`
+        """
+
+        conn, cur = self.db_connect()
+        if conn and cur:
+            locations = db.get_canonical_locations(cur, self.debug)
+
+        db.dispose(conn, cur)
+        return {"locations": locations}
+
+    def get_canonical_trips(self):
+        """ Fetches canonical trips from the database
+
+        See `db.get_canonical_trips`
+
+        Returns:
+            :obj:`dict`
+        """
+
+        conn, cur = self.db_connect()
+        if conn and cur:
+            trips = db.get_canonical_trips(cur, self.debug)
+
+        db.dispose(conn, cur)
+        return {"trips": trips}
 
     def get_trips(self, latMin, lonMin, latMax, lonMax, canonical):
         """ Fetches trips from the database in bounds
@@ -102,12 +126,31 @@ class MainManager(object):
         if conn and cur:
             trips = db.get_trips(cur, self.loadedBoundingBox, canonical, self.debug)
 
-        for val in trips:
-            val['points'] = val['points'].to_json()
-            val['points']['id'] = val['id']
+        db.dispose(conn, cur)
+        return {"trips": trips}
+
+    def can_get_more_trips(self, latMin, lonMin, latMax, lonMax, canonical):
+        """ Checks whether there are trips in db that haven't been fetched yet in a certain bounding box
+
+        See `db.get_more_trips`
+
+        Args:
+            latMin (float): minimum latitude of bounds
+            lonMin (float): minimum longitude of bounds
+            latMax (float): maximum latitude of bounds
+            lonMax (float): minimum longitude of bounds
+            canonical (bool): determines whether the trips are canonical or not
+        Returns:
+            :obj:`dict`
+        """
+
+        conn, cur = self.db_connect()
+
+        if conn and cur:
+            can_load = db.can_get_more_trips(cur, [{"lat": latMin, "lon": lonMin}, {"lat": latMax, "lon": lonMax}], self.loadedBoundingBox, canonical, self.debug)
 
         db.dispose(conn, cur)
-        return {"trips": [r['points'] for r in trips]}
+        return can_load
 
     def get_more_trips(self, latMin, lonMin, latMax, lonMax, canonical):
         """ Fetches trips from the database in bounds that have not yet been loaded
@@ -129,14 +172,10 @@ class MainManager(object):
         if conn and cur:
             trips = db.get_more_trips(cur, [{"lat": latMin, "lon": lonMin}, {"lat": latMax, "lon": lonMax}], self.loadedBoundingBox, canonical, self.debug)
 
-        for val in trips:
-            val['points'] = val['points'].to_json()
-            val['points']['id'] = val['id']
-
         self.loadedBoundingBox = merge_bounding_boxes([{"lat": latMin, "lon": lonMin}, {"lat": latMax, "lon": lonMax}], self.loadedBoundingBox) 
 
         db.dispose(conn, cur)
-        return {"trips": [r['points'] for r in trips]}
+        return {"trips": trips}
 
     def get_all_trips(self):
         """ Fetches all trips from the database
@@ -151,12 +190,8 @@ class MainManager(object):
         if conn and cur:
             trips = db.get_all_trips(cur, self.debug)
 
-        for val in trips:
-            val['points'] = val['points'].to_json()
-            val['points']['id'] = val['id']
-
         db.dispose(conn, cur)
-        return {"trips": [r['points'] for r in trips]}
+        return {"trips": trips}
 
     def get_life_from_day(self, date):
         """ Returns the LIFE representation of a day in the database
@@ -166,14 +201,29 @@ class MainManager(object):
         Returns:
             str
         """
-
         f = open(join(expanduser(self.config['life_all'])), "r")
         raw_life = f.read()
+        f.close()
 
         life = Life()
         life.from_string(raw_life.split('\n'))
 
+        date = date.replace("-", "_")
         return repr(life.day_at_date(date))
+
+    def get_life(self):
+        """ Returns the global LIFE file string
+
+        Returns:
+            str
+        """
+
+        f = open(join(expanduser(self.config['life_all'])), "r")
+        life_str = f.read()
+        f.close()
+
+        return life_str
+        
 
     def delete_day(self, date):
         """ Deletes all data saved for a specific day, including track and LIFE files, as well as DB entries

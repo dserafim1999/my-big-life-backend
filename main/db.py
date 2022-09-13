@@ -2,6 +2,7 @@
 Database related functions
 """
 import datetime
+import json
 import ppygis3
 import psycopg2
 
@@ -552,11 +553,10 @@ def get_canonical_trips(cur, debug = False):
             Defaults to False
     Returns:
         :obj:`list` of :obj:`dict`:
-            [{ 'id': 1, 'points': <tracktotrip.Segment> }, ...]
     """
-    cur.execute("SELECT canonical_id, points FROM canonical_trips")
+    cur.execute("SELECT canonical_id, ST_AsGEOJson(points) FROM canonical_trips")
     trips = cur.fetchall()
-    return [{'id': t[0], 'points': to_segment(t[1], debug=debug)} for t in trips]
+    return [{'id': t[0], 'geoJSON': json.loads(t[1])} for t in trips]
 
 def get_canonical_locations(cur, debug = False):
     """ Gets canonical trips
@@ -567,11 +567,10 @@ def get_canonical_locations(cur, debug = False):
             Defaults to False
     Returns:
         :obj:`list` of :obj:`dict`:
-            [{ 'id': 1, 'points': <tracktotrip.Segment> }, ...]
     """
-    cur.execute("SELECT location_id, label, centroid FROM locations")
+    cur.execute("SELECT location_id, label, ST_AsGEOJson(centroid) FROM locations")
     locations = cur.fetchall()
-    return [{'id': t[0], 'label': t[1], 'point': to_point(t[2], debug=debug)} for t in locations]
+    return [{'id': t[0], 'label': t[1], 'geoJSON': json.loads(t[2])} for t in locations]
 
 def get_trips(cur, bounding_box, canonical=False, debug = False):
     """ Gets trips in db
@@ -581,21 +580,63 @@ def get_trips(cur, bounding_box, canonical=False, debug = False):
         debug (bool, optional): activates debug mode. 
             Defaults to False
     Returns:
-        :obj:`list` of :obj:`dict`:
-            [{ 'id': 1, 'points': <tracktotrip.Segment> }, ...]
+        :obj:`list` of :obj:`dict`
     """
 
     if canonical:
         cur.execute("""
-            SELECT canonical_id, points FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
+            SELECT canonical_id, ST_AsGEOJson(points) FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
             """, (bounding_box[0]["lat"], bounding_box[0]["lon"], bounding_box[1]["lat"], bounding_box[1]["lon"]))
     else:
         cur.execute("""
-            SELECT trip_id, points, timestamps FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
+            SELECT start_date::date, ST_AsGEOJson(points) FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
             """, (bounding_box[0]["lat"], bounding_box[0]["lon"], bounding_box[1]["lat"], bounding_box[1]["lon"]))
     
     trips = cur.fetchall()
-    return [{'id': t[0], 'points': to_segment(t[1], None if canonical else t[2], debug)} for t in trips]
+    return [{'id': t[0], 'geoJSON': json.loads(t[1])} for t in trips]
+
+def can_get_more_trips(cur, bounding_box, loaded_bb, canonical=False, debug = False):
+    """ Checks whether there are trips in db that haven't been fetched yet in a certain bounding box
+
+    Args:
+        cur (:obj:`psycopg2.cursor`)
+        debug (bool, optional): activates debug mode. 
+            Defaults to False
+    Returns:
+        bool
+    """
+
+    if canonical:
+        cur.execute("""
+            WITH results as (
+                (SELECT canonical_id, points FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)) 
+                EXCEPT (
+                    (SELECT canonical_id, points FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
+                        INTERSECT 
+                    (SELECT canonical_id, points FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
+                )
+            ) SELECT count(1) FROM results
+        """, (  bounding_box[0]["lat"], bounding_box[0]["lon"], bounding_box[1]["lat"], bounding_box[1]["lon"],\
+                loaded_bb[0]["lat"], loaded_bb[0]["lon"], loaded_bb[1]["lat"], loaded_bb[1]["lon"],\
+                bounding_box[0]["lat"], bounding_box[0]["lon"], bounding_box[1]["lat"], bounding_box[1]["lon"]\
+            ))
+    else:
+        cur.execute("""
+            WITH results as (
+                (SELECT trip_id, points FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)) 
+                EXCEPT (
+                    (SELECT trip_id, points FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
+                        INTERSECT 
+                    (SELECT trip_id, points FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
+                )
+            ) SELECT count(1) FROM results
+        """, (  bounding_box[0]["lat"], bounding_box[0]["lon"], bounding_box[1]["lat"], bounding_box[1]["lon"],\
+                loaded_bb[0]["lat"], loaded_bb[0]["lon"], loaded_bb[1]["lat"], loaded_bb[1]["lon"],\
+                bounding_box[0]["lat"], bounding_box[0]["lon"], bounding_box[1]["lat"], bounding_box[1]["lon"]\
+            ))
+
+    results = cur.fetchone()
+    return results[0] > 0
 
 def get_more_trips(cur, bounding_box, loaded_bb, canonical=False, debug = False):
     """ Gets trips in db that haven't been fetched yet
@@ -605,17 +646,16 @@ def get_more_trips(cur, bounding_box, loaded_bb, canonical=False, debug = False)
         debug (bool, optional): activates debug mode. 
             Defaults to False
     Returns:
-        :obj:`list` of :obj:`dict`:
-            [{ 'id': 1, 'points': <tracktotrip.Segment> }, ...]
+        :obj:`list` of :obj:`dict`
     """
 
     if canonical:
         cur.execute("""
-            (SELECT canonical_id, points FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)) 
+            (SELECT canonical_id, ST_AsGEOJson(points) FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)) 
             EXCEPT (
-                (SELECT canonical_id, points FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
+                (SELECT canonical_id, ST_AsGEOJson(points) FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
                     INTERSECT 
-                (SELECT canonical_id, points FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
+                (SELECT canonical_id, ST_AsGEOJson(points) FROM canonical_trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
             )
         """, (  bounding_box[0]["lat"], bounding_box[0]["lon"], bounding_box[1]["lat"], bounding_box[1]["lon"],\
                 loaded_bb[0]["lat"], loaded_bb[0]["lon"], loaded_bb[1]["lat"], loaded_bb[1]["lon"],\
@@ -623,11 +663,11 @@ def get_more_trips(cur, bounding_box, loaded_bb, canonical=False, debug = False)
             ))
     else:
         cur.execute("""
-            (SELECT trip_id, points, timestamps FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)) 
+            (SELECT start_date::date, ST_AsGEOJson(points) FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326)) 
             EXCEPT (
-                (SELECT trip_id, points, timestamps FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
+                (SELECT start_date::date, ST_AsGEOJson(points) FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
                     INTERSECT 
-                (SELECT trip_id, points, timestamps FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
+                (SELECT start_date::date, ST_AsGEOJson(points) FROM trips WHERE bounds && ST_MakeEnvelope(%s, %s, %s, %s, 4326))
             )
         """, (  bounding_box[0]["lat"], bounding_box[0]["lon"], bounding_box[1]["lat"], bounding_box[1]["lon"],\
                 loaded_bb[0]["lat"], loaded_bb[0]["lon"], loaded_bb[1]["lat"], loaded_bb[1]["lon"],\
@@ -635,7 +675,7 @@ def get_more_trips(cur, bounding_box, loaded_bb, canonical=False, debug = False)
             ))
 
     trips = cur.fetchall()
-    return [{'id': t[0], 'points': to_segment(t[1], None if canonical else t[2], debug)} for t in trips]
+    return [{'id': t[0], 'geoJSON': json.loads(t[1])} for t in trips]
 
 
 def get_all_trips(cur, debug = False):
@@ -646,12 +686,11 @@ def get_all_trips(cur, debug = False):
         debug (bool, optional): activates debug mode. 
             Defaults to False
     Returns:
-        :obj:`list` of :obj:`dict`:
-            [{ 'id': 1, 'points': <tracktotrip.Segment> }, ...]
+        :obj:`list` of :obj:`dict`
     """
-    cur.execute("SELECT trip_id, points, timestamps FROM trips")
+    cur.execute("SELECT trip_id, ST_AsGEOJson(points) FROM trips")
     trips = cur.fetchall()
-    return [{'id': t[0], 'points': to_segment(t[1], t[2], debug)} for t in trips]
+    return [{'id': t[0], 'points': json.loads(t[1])} for t in trips]
 
 def remove_trips_from_day(cur, date, debug= False):
     ''' Removes trips and stays associated to a certain day

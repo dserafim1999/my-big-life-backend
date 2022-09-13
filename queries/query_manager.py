@@ -10,8 +10,6 @@ import psycopg2
 import queries.utils as utils 
 
 from os.path import expanduser, isfile
-from traceback import print_tb
-from scipy import rand
 from main import db
 from utils import update_dict
 
@@ -104,9 +102,9 @@ class QueryManager(object):
             select = ""
             for i in range(1, self.currentQuerySize+1):
                 if i % 2 == 0:
-                    select += "q"+str(i)+".trip_id,q"+str(i)+".start_date,q"+str(i)+".end_date,q"+str(i)+".points,q"+str(i)+".timestamps, "
+                    select += "q"+str(i)+".trip_id,q"+str(i)+".start_date,q"+str(i)+".end_date, q"+str(i)+".points,q"+str(i)+".timestamps, "
                 else:
-                    select += "q"+str(i)+".stay_id,q"+str(i)+".start_date,q"+str(i)+".end_date,q"+str(i)+".centroid,q"+str(i)+".label, "
+                    select += "q"+str(i)+".stay_id,q"+str(i)+".start_date,q"+str(i)+".end_date, q"+str(i)+".centroid,q"+str(i)+".label, "
             select = select.rstrip(', ')
 
             template = template%(select, items[0].get_query(),items[1].get_query(), items[2].get_query())
@@ -140,14 +138,12 @@ class QueryManager(object):
                     id = result[i]
                     start_date = result[i+1]
                     end_date = result[i+2]
+                    points = {"id": start_date, "geoJSON": json.loads(result[i+3])}
 
                     if (i/5) % 2 != 0: # route points
-                        points = db.to_segment(result[i+3], result[i+4], debug=debug).to_json()
-                        points['id'] = id
                         results.append(ResultInterval(id, start_date, end_date, None, points))
                     else: # stay
-                        points = db.to_segment(result[i+3], start_date, debug=debug).to_json()
-                        points['id'] = id
+                        points["label"] = result[i+4]
                         results.append(ResultRange(result[i+4], start_date, end_date, None, points))
                     
                 to_show.append(results)
@@ -531,7 +527,7 @@ class Range:
     def generate_query(self):
         """ Composes a SQL query string using the query chunks that have been derived from the JSON query object """
 
-        base_query = " SELECT DISTINCT stays.stay_id, start_date, end_date, locations.centroid, locations.label FROM "
+        base_query = " SELECT DISTINCT stays.stay_id, start_date, end_date, ST_AsGEOJson(locations.centroid) as centroid, locations.label FROM "
 
         tables, with_chunks, where_chunks = self.query_chunks()
 
@@ -766,7 +762,7 @@ class Interval:
     def generate_query(self):
         """ Composes a SQL query string using the query chunks that have been derived from the JSON query object """
 
-        base_query = " SELECT DISTINCT trips.trip_id, start_date, end_date, points, timestamps FROM "
+        base_query = " SELECT DISTINCT trips.trip_id, start_date, end_date, ST_AsGEOJson(points) as points, timestamps FROM "
         tables, with_chunks, where_chunks = self.query_chunks()
 
         query = ""

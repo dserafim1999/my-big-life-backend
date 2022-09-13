@@ -11,7 +11,7 @@ from queries.query_manager import QueryManager
 from trackprocessing.process_manager import ProcessingManager
 from main.main_manager import MainManager
 
-parser = argparse.ArgumentParser(description='Starts the server to process tracks')
+parser = argparse.ArgumentParser(description='Starts the server that manages/processes tracks')
 parser.add_argument('-p', '--port', dest='port', metavar='p', type=int,
         default=5000,
         help='port to use')
@@ -26,13 +26,16 @@ parser.add_argument('--verbose', dest='verbose',
         help='print debug information of processing stage')
 parser.add_argument('--config', '-c', dest='config', metavar='c', type=str,
         help='configuration file')
+parser.add_argument('--metrics', '-m', dest='metrics', metavar='m', type=bool,
+        help='register processing metrics')
 args = parser.parse_args()
 
 app = Flask(__name__)
-# socketio = SocketIO(app)
+
+processing_metrics = args.metrics if args.metrics != None else False
 
 manager = MainManager(args.config, args.debug)
-processing_manager = ProcessingManager(args.config, args.debug)
+processing_manager = ProcessingManager(args.config, args.metrics, args.debug)
 query_manager = QueryManager(args.config, args.debug)
 
 
@@ -42,12 +45,32 @@ query_manager = QueryManager(args.config, args.debug)
 
 @app.route('/tripsLocations', methods=['GET'])
 def get_trips_and_locations():
-    """ Gets canoncial trips and locations
+    """ Gets canonical trips and locations
     Returns:
         :obj:`flask.response`
     """
 
     response = jsonify(manager.get_trips_and_locations())
+    return set_headers(response)
+
+@app.route('/locations', methods=['GET'])
+def get_locations():
+    """ Gets canonical locations
+    Returns:
+        :obj:`flask.response`
+    """
+
+    response = jsonify(manager.get_locations())
+    return set_headers(response)
+
+@app.route('/canonicalTrips', methods=['GET'])
+def get_canonical_trips():
+    """ Gets canonical trips
+    Returns:
+        :obj:`flask.response`
+    """
+
+    response = jsonify(manager.get_canonical_trips())
     return set_headers(response)
 
 @app.route('/trips', methods=['GET'])
@@ -64,6 +87,23 @@ def get_trips():
     canonical = request.args.get('canonical') == 'true'
     
     response = jsonify(manager.get_trips(latMin, lonMin, latMax, lonMax, canonical))
+    return set_headers(response)
+
+@app.route('/hasMoreTrips', methods=['GET'])
+def can_get_more_trips():
+    """ Loads more trips in bounds
+    Returns:
+        :obj:`flask.response`
+    """
+
+    latMin = request.args.get('latMin')
+    lonMin = request.args.get('lonMin')
+    latMax = request.args.get('latMax')
+    lonMax = request.args.get('lonMax')
+    canonical = request.args.get('canonical') == 'true'
+    
+    response =  jsonify(manager.can_get_more_trips(latMin, lonMin, latMax, lonMax, canonical))
+
     return set_headers(response)
 
 @app.route('/moreTrips', methods=['GET'])
@@ -135,6 +175,16 @@ def get_life_from_day():
     """
     payload = request.get_json(force=True)
     response = jsonify(manager.get_life_from_day(payload["date"]))
+
+    return set_headers(response)
+
+@app.route('/life', methods=['GET'])
+def get_life():
+    """ Loads global LIFE file 
+        :obj:`flask.response`
+    """
+    
+    response = jsonify(manager.get_life())
 
     return set_headers(response)
 
@@ -215,6 +265,17 @@ def reload_queue():
     processing_manager.reload_queue()
     return send_state()
 
+@app.route('/process/bulkProgress', methods=['GET'])
+def bulk_progress():
+    """ Returns bulk processing progress status
+
+    Returns:
+        :obj:`flask.response`
+    """
+    response = jsonify(processing_manager.get_bulk_progress())
+    return set_headers(response)
+
+
 @app.route('/process/bulk', methods=['GET'])
 def bulk_process():
     """ Starts bulk processing
@@ -222,16 +283,7 @@ def bulk_process():
     Returns:
         :obj:`flask.response`
     """
-    processing_manager.bulk_process()
-    return send_state()
-
-@app.route('/process/rawBulk', methods=['GET'])
-def raw_bulk_process():
-    """Starts bulk processing without preprocessing steps
-    Returns:
-        :obj:`flask.response`
-    """
-    processing_manager.raw_bulk_process()
+    processing_manager.bulk_process(raw=False)
     return send_state()
 
 @app.route('/process/loadLIFE', methods=['POST'])
@@ -255,26 +307,6 @@ def location_suggestion():
     lat = float(request.args.get('lat'))
     lon = float(request.args.get('lon'))
     response = jsonify(processing_manager.location_suggestion(Point(lat, lon, None)))
-    return set_headers(response)
-
-@app.route('/process/canonicalTrips', methods=['GET'])
-def get_canonical_trips():
-    """ Loads all canonical trips
-    Returns:
-        :obj:`flask.response`
-    """
-
-    response = jsonify(processing_manager.get_canonical_trips())
-    return set_headers(response)
-
-@app.route('/process/canonicalLocations', methods=['GET'])
-def get_canonical_locations():
-    """ Loads all canonical locations
-    Returns:
-        :obj:`flask.response`
-    """
-
-    response = jsonify(processing_manager.get_canonical_locations())
     return set_headers(response)
 
 @app.route('/process/dismissDay', methods=['POST'])
