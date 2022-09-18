@@ -211,7 +211,7 @@ class MainManager(object):
         date = date.replace("-", "_")
         return repr(life.day_at_date(date))
 
-    def get_life(self):
+    def get_global_life_string(self):
         """ Returns the global LIFE file string
 
         Returns:
@@ -223,6 +223,18 @@ class MainManager(object):
         f.close()
 
         return life_str
+
+    def get_global_life_json(self):
+        """ Returns the global LIFE file in JSON
+
+        Returns:
+            obj
+        """
+        life_str = self.get_global_life_string()
+        life = Life()
+        life.from_string(life_str)
+
+        return life.to_json()
         
 
     def delete_day(self, date):

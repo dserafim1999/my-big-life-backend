@@ -305,6 +305,7 @@ class Life:
 
     def __repr__(self):
         """Converts LIFE object to LIFE fromat string"""
+        #TODO add categories, subplaces, nameswaps...
         days = []
         for day in self.days:
             days.append(repr(day) + '\n')
@@ -505,14 +506,30 @@ class Life:
                 res=res+[(d, d.with_semantics(sem,exact))]
         return res
 
+    def to_json(self):
+        """Returns JSON object that represents the LIFE file"""
 
+        life = {
+            "categories": self.categories,
+            "subplaces": self.subplaces,
+            "superplaces": self.superplaces,
+            "nameswaps": self.nameswaps,
+            "locationswaps": self.locationswaps,
+            "coordinates": self.coordinates,
+            "days": []
+        }
+                
+        for day in self.days:
+            life["days"].append(day.to_json())
+
+        return life
 
 ############################################################
 #####  Day Class: the record of an entire day  #############
 ############################################################
 
 class Day:
-    """One day (set of spans"""
+    """One day (set of spans)"""
     def __init__(self, date):
         self.date = date
         self.notes = ""
@@ -620,6 +637,20 @@ class Day:
             res.append(((s.end+1,24*60),"moving"))
         return res
 
+    def to_json(self):
+        """Returns a JSON object that represents the day"""
+        
+        day = {
+            "date": '--'+self.date,
+            "spans": [],
+            "notes": self.notes,
+            "start_timezone": timezone_from_offset(self.spans[0].start_timezone) if self.spans[0].start_timezone==self.spans[0].end_timezone else None
+        }
+        
+        for s in self.spans:
+            day["spans"].append(s.to_json())
+
+        return day
 
     def __repr__(self):
         tmp = "--"+self.date +"\n"
@@ -808,6 +839,18 @@ class Span:
         """
         return well_formed_date(self.day,self.end)
 
+    def to_json(self):
+        """Returns a JSON object that represents the span"""
+
+        return {
+            "day": self.day,
+            "start": minutes_to_military(self.start),
+            "end": minutes_to_military(self.end),
+            "tags": self.tags if self.tags else None,
+            "semantics": self.semantics if self.semantics else None,
+            "place": self.place,
+            "end_timezone": timezone_from_offset(self.end_timezone) if self.start_timezone == self.end_timezone else None
+        }
 
     def __repr__(self):
         if type(self.place)==tuple:
