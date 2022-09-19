@@ -7,15 +7,15 @@ import ppygis3
 import psycopg2
 
 from psycopg2.extensions import AsIs, register_adapter
-from tracktotrip import Segment, Point
-from tracktotrip.location import update_location_centroid
+from tracktotrip3 import Segment, Point
+from tracktotrip3.location import update_location_centroid
 from life.life import Life
 
 def adapt_point(point):
-    """ Adapts a `tracktotrip.Point` to use with `psycopg` methods
+    """ Adapts a `tracktotrip3.Point` to use with `psycopg` methods
 
     Params:
-        points (:obj:`tracktotrip.Point`)
+        points (:obj:`tracktotrip3.Point`)
     """
     return AsIs("'SRID=%s;POINT(%s %s 0)'" % (4326, point.lon, point.lat))
 
@@ -29,7 +29,7 @@ def to_point(gis_point, time=None, debug = False):
             debug (bool, optional): activates debug mode. 
                 Defaults to False
     Returns:
-        :obj:`tracktotrip.Point`
+        :obj:`tracktotrip3.Point`
     """
     gis_point = ppygis3.Geometry.read_ewkb(gis_point)
     return Point(gis_point.y, gis_point.x, time, debug)
@@ -44,7 +44,7 @@ def to_segment(gis_points, timestamps=None, debug = False):
         debug (bool, optional): activates debug mode. 
             Defaults to False
     Returns:
-        :obj:`tracktotrip.Segment`
+        :obj:`tracktotrip3.Segment`
     """
     gis_geometry = ppygis3.Geometry.read_ewkb(gis_points)
     result = []
@@ -61,10 +61,10 @@ def to_segment(gis_points, timestamps=None, debug = False):
     return Segment(result, debug)
 
 def adapt_segment(segment, debug = False):
-    """ Adapts a `tracktotrip.Segment` to use with `psycopg` methods
+    """ Adapts a `tracktotrip3.Segment` to use with `psycopg` methods
 
     Args:
-        segment (:obj:`tracktotrip.Segment`)
+        segment (:obj:`tracktotrip3.Segment`)
         debug (bool, optional): activates debug mode. 
             Defaults to False
     """
@@ -101,7 +101,7 @@ def get_day_from_life(life, track, debug = False):
 
     Args:
         life (:obj:`life.Life`)
-        track (:obj:`tracktotrip.Segment`)
+        track (:obj:`tracktotrip3.Segment`)
         debug (bool, optional): activates debug mode. 
             Defaults to False
     Returns:
@@ -118,7 +118,7 @@ def life_date(point, debug = False):
     """ Convert point date into LIFE date format
 
     Args:
-        point (:obj:`tracktotrip.Point`) 
+        point (:obj:`tracktotrip3.Point`) 
         debug (bool, optional): activates debug mode. 
             Defaults to False
     """
@@ -129,7 +129,7 @@ def life_time(point, debug = False):
     """ Convert point date into LIFE time format
 
     Args:
-        point (:obj:`tracktotrip.Point`) 
+        point (:obj:`tracktotrip3.Point`) 
         debug (bool, optional): activates debug mode. 
             Defaults to False
     """
@@ -141,12 +141,12 @@ def load_from_segments_annotated(cur, track, life_content, max_distance, min_sam
 
     Args:
         cur (:obj:`psycopg2.cursor`)
-        track (:obj:`tracktotrip.Track`)
+        track (:obj:`tracktotrip3.Track`)
         life_content (str): LIFE formatted string
         max_distance (float): Max location distance. See
-            `tracktotrip.location.update_location_centroid`
+            `tracktotrip3.location.update_location_centroid`
         min_samples (float): Minimum samples requires for location.  See
-            `tracktotrip.location.update_location_centroid`
+            `tracktotrip3.location.update_location_centroid`
         insert_locs (bool): Determines whether locations are inserted into database
             Defaults to True
         debug (bool, optional): activates debug mode. 
@@ -222,9 +222,9 @@ def load_from_life(cur, content, max_distance, min_samples, debug = False):
         cur (:obj:`psycopg2.cursor`)
         content (str): LIFE formatted string
         max_distance (float): Max location distance. See
-            `tracktotrip.location.update_location_centroid`
+            `tracktotrip3.location.update_location_centroid`
         min_samples (float): Minimum samples requires for location.  See
-            `tracktotrip.location.update_location_centroid`
+            `tracktotrip3.location.update_location_centroid`
         debug (bool, optional): activates debug mode. 
             Defaults to False    
     """
@@ -314,9 +314,9 @@ def insert_location(cur, label, point, max_distance, min_samples, debug = False)
         label (str): Location's name
         point (:obj:`Point`): Position marked with current label
         max_distance (float): Max location distance. See
-            `tracktotrip.location.update_location_centroid`
+            `tracktotrip3.location.update_location_centroid`
         min_samples (float): Minimum samples requires for location.  See
-            `tracktotrip.location.update_location_centroid`
+            `tracktotrip3.location.update_location_centroid`
         debug (bool, optional): activates debug mode. 
             Defaults to False
     """
@@ -378,11 +378,11 @@ def insert_segment(cur, segment, max_distance, min_samples, debug = False):
 
     Args:
         cur (:obj:`psycopg2.cursor`)
-        segment (:obj:`tracktotrip.Segment`): Segment to insert
+        segment (:obj:`tracktotrip3.Segment`): Segment to insert
         max_distance (float): Max location distance. See
-            `tracktotrip.location.update_location_centroid`
+            `tracktotrip3.location.update_location_centroid`
         min_samples (float): Minimum samples requires for location.  See
-            `tracktotrip.location.update_location_centroid`
+            `tracktotrip3.location.update_location_centroid`
         debug (bool, optional): activates debug mode. 
             Defaults to False
     Returns:
@@ -413,7 +413,7 @@ def match_canonical_trip(cur, trip, distance, debug = False):
 
     Args:
         cur (:obj:`psycopg2.cursor`)
-        trip (:obj:`tracktotrip.Segment`): Trip to match
+        trip (:obj:`tracktotrip3.Segment`): Trip to match
         debug (bool, optional): activates debug mode. 
             Defaults to False
     """
@@ -435,11 +435,11 @@ def match_canonical_trip_bounds(cur, bounds, debug = False):
 
     Args:
         cur (:obj:`psycopg2.cursor`)
-        trip (:obj:`tracktotrip.Segment`): Trip to match
+        trip (:obj:`tracktotrip3.Segment`): Trip to match
         debug (bool, optional): activates debug mode. 
             Defaults to False
     Returns:
-        :obj:`list` of (int, :obj:`tracktotrip.Segment`, int): List of tuples with the id of
+        :obj:`list` of (int, :obj:`tracktotrip3.Segment`, int): List of tuples with the id of
             the canonical trip, the segment representation and the number of times it appears
     """
     cur.execute("""
@@ -467,7 +467,7 @@ def insert_canonical_trip(cur, can_trip, mother_trip_id, debug = False):
 
     Args:
         cur (:obj:`psycopg2.cursor`)
-        can_trip (:obj:`tracktotrip.Segment`): Canonical trip
+        can_trip (:obj:`tracktotrip3.Segment`): Canonical trip
         mother_trip_id (int): Id of the trip that originated the canonical representation
         debug (bool, optional): activates debug mode. 
             Defaults to False
@@ -499,7 +499,7 @@ def update_canonical_trip(cur, can_id, trip, mother_trip_id, debug = False):
     Args:
         cur (:obj:`psycopg2.cursor`)
         can_id (int): canonical trip id to update
-        trip (:obj:`tracktotrip.Segment): canonical trip
+        trip (:obj:`tracktotrip3.Segment): canonical trip
         mother_trip_id (int): Id of trip that caused the update
         debug (bool, optional): activates debug mode. 
             Defaults to False

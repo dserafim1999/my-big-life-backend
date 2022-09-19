@@ -6,7 +6,7 @@ Spawns a server that coodinates the operations
 import argparse
 from urllib import response
 from flask import Flask, request, jsonify
-from tracktotrip import Point
+from tracktotrip3 import Point
 from queries.query_manager import QueryManager
 from trackprocessing.process_manager import ProcessingManager
 from main.main_manager import MainManager

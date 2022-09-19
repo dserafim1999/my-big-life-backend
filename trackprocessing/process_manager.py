@@ -5,16 +5,16 @@ Contains class that orchestrates processing
 import re
 import json
 import glob 
-import tracktotrip as tt
+import tracktotrip3 as tt
 
 from os import listdir, stat, rename, replace, remove
 from shutil import copyfile
 from datetime import date, datetime
 from os.path import join, expanduser, isfile
 from collections import OrderedDict
-from tracktotrip.utils import pairwise, estimate_meters_to_deg
-from tracktotrip.location import infer_location
-from tracktotrip.learn_trip import learn_trip, complete_trip
+from tracktotrip3.utils import pairwise, estimate_meters_to_deg
+from tracktotrip3.location import infer_location
+from tracktotrip3.learn_trip import learn_trip, complete_trip
 from main import db
 from life.life import Life
 from utils import update_dict
@@ -339,7 +339,7 @@ class ProcessingManager(object):
         Args:
             data (:obj:`dict`): JSON payload received from the client
         Returns:
-            :obj:`tracktotrip.Track`
+            :obj:`tracktotrip3.Track`
         """
         step = self.current_step
 
@@ -455,13 +455,13 @@ class ProcessingManager(object):
     def preview_to_adjust(self, track):
         """ Processes a track so that it becomes a trip
 
-        More information in `tracktotrip.Track`'s `to_trip` method
+        More information in `tracktotrip3.Track`'s `to_trip` method
 
         Args:
-            track (:obj:`tracktotrip.Track`)
+            track (:obj:`tracktotrip3.Track`)
             changes (:obj:`list` of :obj:`dict`): Details of, user made, changes
         Returns:
-            :obj:`tracktotrip.Track`
+            :obj:`tracktotrip3.Track`
         """
         config = self.config
 
@@ -487,9 +487,9 @@ class ProcessingManager(object):
         """ Extracts location from track
 
         Args:
-            track (:obj:`tracktotrip.Track`)
+            track (:obj:`tracktotrip3.Track`)
         Returns:
-            :obj:`tracktotrip.Track`
+            :obj:`tracktotrip3.Track`
         """
 
         config = self.config
@@ -503,7 +503,7 @@ class ProcessingManager(object):
             See `db.query_locations`
 
             Args:
-                point (:obj:`tracktotrip.Point`)
+                point (:obj:`tracktotrip3.Point`)
                 radius (float): Radius, in meters
             Returns:
                 :obj:`list` of (str, ?, ?)
@@ -554,7 +554,7 @@ class ProcessingManager(object):
         trip is exported as a GPX file to the output path.
 
         Args:
-            track (:obj:tracktotrip.Track`)
+            track (:obj:tracktotrip3.Track`)
             changes (:obj:`list` of :obj:`dict`): Details of, user made, changes
             calculate_canonical (bool): If true, calculates canonical trips and locations 
         """
@@ -633,7 +633,7 @@ class ProcessingManager(object):
                 See `db.insert_canonical_trip`
 
                 Args:
-                    can_trip (:obj:`tracktotrip.Segment`): Canonical trip
+                    can_trip (:obj:`tracktotrip3.Segment`): Canonical trip
                     mother_trip_id (int): Id of the trip that originated the canonical
                         representation
                 Returns:
@@ -648,7 +648,7 @@ class ProcessingManager(object):
 
                 Args:
                     can_id (int): Canonical trip id
-                    trip (:obj:`tracktotrip.Segment`): Canonical trip
+                    trip (:obj:`tracktotrip3.Segment`): Canonical trip
                     mother_trip_id (int): Id of the trip that originated the canonical
                         representation
                 """
@@ -714,7 +714,7 @@ class ProcessingManager(object):
         It includes all trips/tracks of the day
 
         Returns:
-            :obj:`tracktotrip.Track` or None
+            :obj:`tracktotrip3.Track` or None
         """
         if self.current_step is Step.done:
             return None
@@ -754,10 +754,10 @@ class ProcessingManager(object):
         Args:
             data (:obj:`dict`): Requires keys 'from' and 'to', which should countain
                 point representations with 'lat' and 'lon'.
-            from_point (:obj:`tracktotrip.Point`): with keys lat and lon
-            to_point (:obj:`tracktotrip.Point`): with keys lat and lon
+            from_point (:obj:`tracktotrip3.Point`): with keys lat and lon
+            to_point (:obj:`tracktotrip3.Point`): with keys lat and lon
         Returns:
-            :obj:`tracktotrip.Track`
+            :obj:`tracktotrip3.Track`
         """
         distance = estimate_meters_to_deg(self.config['location']['max_distance'], debug=self.debug) * 2
         b_box = (
@@ -820,7 +820,7 @@ class ProcessingManager(object):
             See `db.query_locations`
 
             Args:
-                point (:obj:`tracktotrip.Point`)
+                point (:obj:`tracktotrip3.Point`)
                 radius (float): Radius, in meters
             Returns:
                 :obj:`list` of (str, ?, ?)
