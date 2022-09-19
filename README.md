@@ -10,17 +10,9 @@ The required Python libraries to run the backend server can be found in the "req
  $ pip install -r requirements.txt
 ```
 
-### TrackToTrip Manual Install
+If you are using a virtual environment to install MyBigLife Backend's requirements, make sure to run the previous command with the virtual environment active.
 
-As it stands, [TrackToTrip](https://github.com/dserafim1999/TrackToTrip/) must be installed separately. Once downloaded, you can install it by running the following command in the project's directory:
-
-```
- $ python setup.py install
-```
-
-If you are using a virtual environment to install MyBigLife Backend"s requirements, make sure to run the previous command with the virtual environment active.
-
-**NOTE:** TrackToTrip requires Microsoft Visual C++ 14.0. It can be found using the [Build Tools for Visual Studio 2022](https://visualstudio.microsoft.com/downloads/?q=build+tools)
+**NOTE:** tracktotrip3 requires Microsoft Visual C++ 14.0. It can be found using the [Build Tools for Visual Studio 2022](https://visualstudio.microsoft.com/downloads/?q=build+tools)
 
 
 ## Config
