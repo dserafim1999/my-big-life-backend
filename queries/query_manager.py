@@ -389,6 +389,7 @@ class Range:
         Returns:
             str: formatted string that represents part of a query
         """
+        
         return f" {type}{cast} {symbol} '{date}' "
 
     def query_chunk_start_date(self):
@@ -519,6 +520,8 @@ class Range:
 
         global date
         if date != "--/--/----":
+            date = datetime.datetime.strptime(date,  "%d/%m/%Y")
+            date = datetime.datetime.strftime(date, "%Y-%m-%d")
             where_chunks.append(f" start_date::date = '{date}' ")
 
         return tables, with_chunks, where_chunks        
@@ -754,6 +757,8 @@ class Interval:
 
         global date
         if date != "--/--/----":
+            date = datetime.datetime.strptime(date,  "%d/%m/%Y")
+            date = datetime.datetime.strftime(date, "%Y-%m-%d")
             where_chunks.append(f" start_date::date = '{date}' ")
 
         return tables, with_chunks, where_chunks        

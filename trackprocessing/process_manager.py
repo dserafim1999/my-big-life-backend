@@ -333,7 +333,7 @@ class ProcessingManager(object):
             self.current_step = Step.prev(self.current_step)
             self.history.pop()
 
-    def process(self, data):
+    def process(self, data, calculate_canonical=True):
         """ Processes the current step
 
         Args:
@@ -365,7 +365,7 @@ class ProcessingManager(object):
         elif step == Step.annotate:
             if not life or len(life) == 0:
                 life = track.to_life(self.config["trip_annotations"])
-            return self.annotate_to_next(track, life, data['calculate_canonical'])
+            return self.annotate_to_next(track, life, calculate_canonical)
         else:
             return None
 
@@ -425,7 +425,7 @@ class ProcessingManager(object):
             # adjust -> annotate
             self.process({'changes': [], 'LIFE': ''})
             # annotate -> store
-            self.process({'changes': [], 'LIFE': str(life), 'calculate_canonical': self.config["bulk_calculate_canonical"]})
+            self.process({'changes': [], 'LIFE': str(life)}, self.config["bulk_calculate_canonical"])
 
             # Register metrics
             if self.use_metrics:
