@@ -520,8 +520,7 @@ class ProcessingManager(object):
             use_google=False,
             google_key=c_loc['google_key'],
             use_foursquare=False,
-            foursquare_client_id=c_loc['foursquare_client_id'],
-            foursquare_client_secret=c_loc['foursquare_client_secret'],
+            foursquare_key=c_loc['foursquare_key'],
             limit=c_loc['limit']
         )
 
@@ -837,8 +836,7 @@ class ProcessingManager(object):
             use_google=c_loc['use'] and c_loc['use_google'],
             google_key=c_loc['google_key'],
             use_foursquare=c_loc['use'] and c_loc['use_foursquare'],
-            foursquare_client_id=c_loc['foursquare_client_id'],
-            foursquare_client_secret=c_loc['foursquare_client_secret'],
+            foursquare_key=c_loc['foursquare_key'],
             limit=c_loc['limit'],
             debug=self.debug
         )
