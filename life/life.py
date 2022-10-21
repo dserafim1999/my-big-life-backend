@@ -304,9 +304,11 @@ class Life:
         return day
 
     def __repr__(self):
-        """Converts LIFE object to LIFE fromat string"""
+        """Converts LIFE object to LIFE format string"""
         #TODO add categories, subplaces, nameswaps...
         days = []
+        self.days.sort()
+
         for day in self.days:
             days.append(repr(day) + '\n')
         
