@@ -11,6 +11,30 @@ from tracktotrip3 import Segment, Point
 from tracktotrip3.location import update_location_centroid
 from life.life import Life
 
+def get_time_at_locations(cur, debug=False):
+    cur.execute("""
+        WITH  durations AS 
+        ( SELECT (DATE_PART('day', end_date - start_date) * 24 +
+        DATE_PART('hour', end_date - start_date)) * 60 + 
+        DATE_PART('minute', end_date - start_date) 
+        AS duration, stay_id FROM stays)  
+        SELECT DISTINCT stays.stay_id, ST_AsGEOJson(locations.centroid) as centroid, locations.label, durations.duration 
+        FROM stays , locations , durations 
+        WHERE  locations.label = stays.location_label  AND  durations.stay_id = stays.stay_id
+    """)
+
+    results = cur.fetchall()
+    
+    res = {}
+
+    for r in results:
+        if r[2] in res:
+            res[r[2]]['duration'] += r[3]
+        else:
+            res[r[2]] = {'id': r[0], 'name': r[2], 'location': json.loads(r[1]), 'duration': r[3]}
+
+    return [r[1] for r in list(res.items())]
+
 def adapt_point(point):
     """ Adapts a `tracktotrip3.Point` to use with `psycopg` methods
 
