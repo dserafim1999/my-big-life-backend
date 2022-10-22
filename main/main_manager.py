@@ -9,27 +9,18 @@ from os import remove
 from os.path import join, expanduser, isfile
 from life.life import Life
 from main import db
-from utils import merge_bounding_boxes, update_dict
+from utils import Manager, merge_bounding_boxes
 
-from main.default_config import CONFIG
-
-
-class MainManager(object):
+class MainManager(Manager):
     """ Manager that contains general features
 
     Arguments:
         configFile: configuration file directory 
     """
     def __init__(self, config_file, debug):
-        self.config = dict(CONFIG)
+        super().__init__(config_file, debug)
         self.configFile = config_file
-        self.debug = debug
         self.loadedBoundingBox = [{"lat": 0, "lon": 0}, {"lat": 0, "lon": 0}]
-
-        if config_file and isfile(expanduser(config_file)):
-            with open(expanduser(config_file), 'r') as config_file:
-                config = json.loads(config_file.read())
-                update_dict(self.config, config)
 
     def update_config(self, new_config):
         """ Updates the config object by overlapping with the new config object
@@ -37,24 +28,9 @@ class MainManager(object):
         Args:
             new_config (obj): JSON object that contains configuration changes 
         """
-        update_dict(self.config, new_config)
+        super().update_config(new_config)
         with open(expanduser(self.configFile), 'w') as config_file:
             json.dump(self.config, config_file, indent=4)
-
-    def db_connect(self):
-        """ Creates a connection with the database
-
-        Use `db.dispose` to commit and close cursor and connection
-
-        Returns:
-            (psycopg2.connection, psycopg2.cursor): Both are None if the connection is invalid
-        """
-        dbc = self.config['db']
-        conn = db.connect_db(dbc['host'], dbc['name'], dbc['user'], dbc['port'], dbc['pass'])
-        if conn:
-            return conn, conn.cursor()
-        else:
-            return None, None
 
     def get_trips_and_locations(self):
         """ Fetches canonical trips and locations from the database

@@ -304,9 +304,11 @@ class Life:
         return day
 
     def __repr__(self):
-        """Converts LIFE object to LIFE fromat string"""
+        """Converts LIFE object to LIFE format string"""
         #TODO add categories, subplaces, nameswaps...
         days = []
+        self.days.sort()
+
         for day in self.days:
             days.append(repr(day) + '\n')
         
@@ -518,6 +520,8 @@ class Life:
             "coordinates": self.coordinates,
             "days": []
         }
+
+        self.days.sort()
                 
         for day in self.days:
             life["days"].append(day.to_json())
@@ -554,6 +558,8 @@ class Day:
                 res[s.place] = res.get(s.place,0)+s.length()
         return res
 
+    def __lt__(self, other):
+        return self.date < other.date
 
     def __iter__(self):
         for s in self.spans:
