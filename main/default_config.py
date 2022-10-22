@@ -45,7 +45,6 @@ CONFIG = {
         'use_google': True,
         'google_key': '',
         'use_foursquare': True,
-        'foursquare_client_id': '',
-        'foursquare_client_secret': ''
+        'foursquare_key': ''
     },
 }

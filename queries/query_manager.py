@@ -530,7 +530,7 @@ class Range:
     def generate_query(self):
         """ Composes a SQL query string using the query chunks that have been derived from the JSON query object """
 
-        base_query = " SELECT DISTINCT stays.stay_id, start_date, end_date, ST_AsGEOJson(locations.centroid) as centroid, locations.label FROM "
+        base_query = " SELECT DISTINCT stays.stay_id, start_date, end_date, ST_AsGEOJson(locations.centroid) as centroid, locations.label "
 
         tables, with_chunks, where_chunks = self.query_chunks()
 
@@ -549,6 +549,7 @@ class Range:
 
         # FROM ...
         if len(tables) > 0:
+            query += " FROM "
             for i in range(len(tables)):
                 query += tables[i]
                 if i < len(tables) - 1:
@@ -767,7 +768,7 @@ class Interval:
     def generate_query(self):
         """ Composes a SQL query string using the query chunks that have been derived from the JSON query object """
 
-        base_query = " SELECT DISTINCT trips.trip_id, start_date, end_date, ST_AsGEOJson(points) as points, timestamps FROM "
+        base_query = " SELECT DISTINCT trips.trip_id, start_date, end_date, ST_AsGEOJson(points) as points, timestamps "
         tables, with_chunks, where_chunks = self.query_chunks()
 
         query = ""
@@ -785,6 +786,7 @@ class Interval:
 
         # FROM ...
         if len(tables) > 0:
+            query += " FROM "
             for i in range(len(tables)):
                 query += tables[i]
                 if i < len(tables) - 1:
