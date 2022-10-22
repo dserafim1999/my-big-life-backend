@@ -1,5 +1,11 @@
 # MyBigLife Backend
 
+_MyBigLife_ enables users to easily process, analyse
+and query their spatial and temporal information with a strong emphasis on personal semantics and
+the power they have over their own data. The frontend for this project can be found [here](https://github.com/dserafim1999/my-big-life).
+
+_TrackToTrip3_ is used for track processing operations, and can be found [here](https://github.com/dserafim1999/tracktotrip3).
+
 ## Setup
 
 ### Requirements
