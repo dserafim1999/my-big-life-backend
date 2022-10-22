@@ -99,6 +99,7 @@ A default manager should look something like this (this template can be found in
 from os.path import expanduser, isfile
 from utils import update_dict
 from main.default_config import CONFIG
+from main import db
 import json
 
 class Manager(object):
@@ -113,6 +114,14 @@ class Manager(object):
         
     def update_config(self, new_config):
         update_dict(self.config, new_config)
+
+    def db_connect(self):
+        dbc = self.config['db']
+        conn = db.connect_db(dbc['host'], dbc['name'], dbc['user'], dbc['port'], dbc['pass'])
+        if conn:
+            return conn, conn.cursor()
+        else:
+            return None, None
 ```
 
 After implementing the logic for your manager, it's time to link it to the server. Head to the `server.py` file and create a new instance of the manager. Then you can create the endpoints you wish to add to this manager. To keep endpoints consistent within their managers, a convention was set where you prefix the endpoint's route with a name that identifies the managers behaviour. For instance, if we wanted to add a 'play' endpoint to a video manager, we could name give it the route '/video/play'. 

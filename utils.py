@@ -1,6 +1,7 @@
 from os.path import expanduser, isfile
 from main.default_config import CONFIG
 import json
+from main import db
 
 def update_dict(target, updater):
     """ Updates a dictionary, keeping the same structure
@@ -49,3 +50,20 @@ class Manager(object):
         
     def update_config(self, new_config):
         update_dict(self.config, new_config)
+    
+    def db_connect(self):
+        """ Creates a connection with the database
+
+        Use `db.dispose` to commit and close cursor and connection
+
+        Returns:
+            (psycopg2.connection, psycopg2.cursor): Both are None if the connection is invalid
+        """
+        dbc = self.config['db']
+        conn = db.connect_db(dbc['host'], dbc['name'], dbc['user'], dbc['port'], dbc['pass'])
+        if conn:
+            return conn, conn.cursor()
+        else:
+            return None, None
+
+    
