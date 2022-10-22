@@ -9,17 +9,15 @@ import tracktotrip3 as tt
 
 from os import listdir, stat, rename, replace, remove
 from shutil import copyfile
-from datetime import date, datetime
+from datetime import datetime
 from os.path import join, expanduser, isfile
 from collections import OrderedDict
-from tracktotrip3.utils import pairwise, estimate_meters_to_deg
+from tracktotrip3.utils import estimate_meters_to_deg
 from tracktotrip3.location import infer_location
 from tracktotrip3.learn_trip import learn_trip, complete_trip
 from main import db
 from life.life import Life
-from utils import update_dict
-
-from main.default_config import CONFIG
+from utils import Manager
 
 def gte_time(small, big, debug = False):
     """ Determines if time is greater or equal to another 
@@ -149,7 +147,7 @@ class Step(object):
         """
         return (current - 1) % Step._len
 
-class ProcessingManager(object):
+class ProcessingManager(Manager):
     """ Manages the processing phases
 
     Arguments:
@@ -168,13 +166,7 @@ class ProcessingManager(object):
     """
 
     def __init__(self, config_file, metrics, debug):
-        self.config = dict(CONFIG)
-        self.debug = debug
-
-        if config_file and isfile(expanduser(config_file)):
-            with open(expanduser(config_file), 'r') as config_file:
-                config = json.loads(config_file.read())
-                update_dict(self.config, config)
+        super().__init__(config_file, debug)
 
         self.is_bulk_processing = False
         self.bulk_progress = -1
@@ -528,21 +520,6 @@ class ProcessingManager(object):
 
         return track
 
-    def db_connect(self):
-        """ Creates a connection with the database
-
-        Use `db.dispose` to commit and close cursor and connection
-
-        Returns:
-            (psycopg2.connection, psycopg2.cursor): Both are None if the connection is invalid
-        """
-        dbc = self.config['db']
-        conn = db.connect_db(dbc['host'], dbc['name'], dbc['user'], dbc['port'], dbc['pass'])
-        if conn:
-            return conn, conn.cursor()
-        else:
-            return None, None
-
     def annotate_to_next(self, track, life, calculate_canonical=True):
         """ Stores the track and dequeues another track to be
         processed.
@@ -805,7 +782,7 @@ class ProcessingManager(object):
         Args:
             new_config (obj): JSON object that contains configuration changes 
         """
-        update_dict(self.config, new_config)
+        super().update_config(new_config)
         if self.current_step is Step.done:
             self.load_days()
 

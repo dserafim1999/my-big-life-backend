@@ -8,14 +8,9 @@ import datetime
 import math
 import psycopg2
 import queries.utils as utils 
+from utils import Manager
 
-from os.path import expanduser, isfile
-from main import db
-from utils import update_dict
-
-from main.default_config import CONFIG
-
-class QueryManager(object):
+class QueryManager(Manager):
     """ Manages queries
 
     Arguments:
@@ -23,40 +18,10 @@ class QueryManager(object):
         loadMoreId: latest ID for a chunk of results (based on number of results loaded at a time) 
     """
     def __init__(self, config_file, debug):
-        self.config = dict(CONFIG)
-        self.debug = debug
+        super().__init__(config_file, debug)
         self.currentQuerySize = 0
         self.loadMoreId = 0
 
-        if config_file and isfile(expanduser(config_file)):
-            with open(expanduser(config_file), 'r') as config_file:
-                config = json.loads(config_file.read())
-                update_dict(self.config, config)
-        
-
-    def update_config(self, new_config):
-        """ Updates the config object by overlapping with the new config object
-
-        Args:
-            new_config (obj): JSON object that contains configuration changes 
-        """
-        update_dict(self.config, new_config)
-
-    def db_connect(self):
-        """ Creates a connection with the database
-
-        Use `db.dispose` to commit and close cursor and connection
-
-        Returns:
-            (psycopg2.connection, psycopg2.cursor): Both are None if the connection is invalid
-        """
-        dbc = self.config['db']
-        conn = db.connect_db(dbc['host'], dbc['name'], dbc['user'], dbc['port'], dbc['pass'])
-        if conn:
-            return conn, conn.cursor()
-        else:
-            return None, None
-    
     def execute_query(self, payload):
         """ Receives a query JSON object and executes the query in the database
 
