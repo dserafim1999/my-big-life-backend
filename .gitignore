@@ -68,3 +68,4 @@ venv/
 tracks/
 config.json
 *.life
+*.gpx

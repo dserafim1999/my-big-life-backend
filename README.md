@@ -1,3 +1,5 @@
+*WARNING* This project has since migrated to [here](https://github.com/dserafim1999/my-big-life/tree/main/backend). Development on this project will continue at the new location.  
+
 # MyBigLife Backend
 
 _MyBigLife_ enables users to easily process, analyse
